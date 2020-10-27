@@ -1,0 +1,45 @@
+{
+  "name": "query-definition",
+  "version": "1.0.0-rc.1",
+  "description": "Library for building SQL queries",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "DEBUG=query-definition* jest",
+    "test:win": "set DEBUG=query-definition* & jest",
+    "lint": "tslint -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
+    "postpublish": "rm -rf dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://kennysng@github.com/kennysng/query-definition.git"
+  },
+  "author": "Kennys Ng <kennysng@hotmail.com.hk>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/kennysng/query-definition/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/kennysng/query-definition#readme",
+  "devDependencies": {
+    "@types/jest": "^25.1.3",
+    "@types/node": "^14.0.5",
+    "jest": "^26.0.1",
+    "ts-jest": "^26.0.0",
+    "ts-node": "^8.6.2",
+    "tslint": "^6.0.0",
+    "typescript": "^3.8.2"
+  },
+  "dependencies": {
+    "@types/debug": "^4.1.5",
+    "debug": "^4.1.1",
+    "swig-templates": "^2.0.3"
+  },
+  "peerDependencies": {
+    "node-jql": "^2.0.0-rc.89"
+  }
+}
