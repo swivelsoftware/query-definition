@@ -14,7 +14,7 @@ import {
   Expression
 } from 'node-jql'
 import _ = require('lodash')
-import { ExpressionArg, GroupByArg, ICompanions, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, IShortcutOptions, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
+import { ExpressionArg, GroupByArg, ICompanions, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
 import { SubqueryDef } from './subquery'
 import { fixRegexp, merge, newQueryWithoutWildcard } from './utils'
 
@@ -765,7 +765,7 @@ export class QueryDef {
     return this.groupField(overwrite, name, arg, 'group_', ...companion)
   }
 
-  public useShortcuts(shortcuts: IShortcut[], options: IShortcutOptions = {}): QueryDef {
+  public useShortcuts(shortcuts: IShortcut[], options: any = {}): QueryDef {
     const registered: { [key: string]: Expression } = new Proxy({}, {
       get(target, name) {
         if (!target[name]) throw new Error(`expression '${String(name)}' not registered`)
@@ -774,7 +774,7 @@ export class QueryDef {
       }
     })
     const registeredCompanions: { [key: string]: string[] } = {}
-    const context: IShortcutContext = { registered, registeredCompanions }
+    const context: IShortcutContext = { registered, registeredCompanions, options }
     let companions: string[] | ((params: IQueryParams) => string[]) = []
 
     for (const sc of shortcuts) {

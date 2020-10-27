@@ -61,13 +61,10 @@ export interface IQueryParams {
   constants?: any
 }
 
-export interface IShortcutOptions {
-  baseTableName?: string
-}
-
 export interface IShortcutContext {
   registered: { [key: string]: Expression }
   registeredCompanions: { [key: string]: string[] }
+  options: any
 }
 
 export type IShortcutFunc = (this: QueryDef, sc: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: IShortcutContext & any) => void
