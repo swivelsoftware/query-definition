@@ -14,11 +14,11 @@ import {
   Expression
 } from 'node-jql'
 import _ = require('lodash')
-import { ExpressionArg, GroupByArg, ICompanions, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
+import { ExpressionArg, GroupByArg, IBaseShortcut, ICompanions, IFieldArgShortcut, IFieldShortcut, IGroupByArgShortcut, IGroupByShortcut, IOrderByArgShortcut, IOrderByShortcut, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, ISubqueryArgShortcut, ISubqueryShortcut, ITableArgShortcut, ITableShortcut, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
 import { SubqueryDef } from './subquery'
 import { fixRegexp, merge, newQueryWithoutWildcard } from './utils'
 
-export function registerShortcut(name: string, func: IShortcutFunc) {
+export function registerShortcut<T extends IBaseShortcut>(name: string, func: IShortcutFunc<T>) {
   if (['table', 'field', 'subquery', 'groupBy', 'orderBy'].indexOf(name) === -1) {
     availableShortcuts[name] = func
   }
@@ -27,8 +27,8 @@ export function registerShortcut(name: string, func: IShortcutFunc) {
   }
 }
 
-const availableShortcuts: { [key: string]: IShortcutFunc } = {
-  table: function (this: QueryDef, { name, ...sc }: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
+  table: function (this: QueryDef, { name, ...sc }: ITableShortcut | ITableArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('fromTable' in sc) {
       queryArg = { $from: typeof sc.fromTable === 'function' ? sc.fromTable(context.registered) : sc.fromTable }
@@ -48,7 +48,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc } = {
       console.warn(`Invalid table:${name}`)
     }
   },
-  field: function (this: QueryDef, { name, ...sc }: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  field: function (this: QueryDef, { name, ...sc }: IFieldShortcut | IFieldArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       const expression = typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression
@@ -73,7 +73,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc } = {
       console.warn(`Invalid field:${name}`)
     }
   },
-  subquery: function (this: QueryDef, { name, ...sc }: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  subquery: function (this: QueryDef, { name, ...sc }: ISubqueryShortcut | ISubqueryArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let subqueryArg: SubqueryArg | undefined
     if ('expression' in sc) {
       subqueryArg = { $where: typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression }
@@ -114,7 +114,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc } = {
       console.warn(`Invalid subquery:${name}`)
     }
   },
-  groupBy: function (this: QueryDef, { name, ...sc }: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  groupBy: function (this: QueryDef, { name, ...sc }: IGroupByShortcut | IGroupByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       queryArg = { $group: new GroupBy([typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression]) }
@@ -134,7 +134,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc } = {
       console.warn(`Invalid groupBy:${name}`)
     }
   },
-  orderBy: function (this: QueryDef, { name, ...sc }: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  orderBy: function (this: QueryDef, { name, ...sc }: IOrderByShortcut | IOrderByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       const direction: 'ASC'|'DESC' = sc['direction'] || 'ASC'

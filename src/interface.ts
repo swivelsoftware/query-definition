@@ -67,12 +67,13 @@ export interface IShortcutContext {
   options: any
 }
 
-export type IShortcutFunc = (this: QueryDef, sc: IShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: IShortcutContext & any) => void
+export type IShortcutFunc<T extends IBaseShortcut> = (this: QueryDef, sc: T, companions: string[] | ((params: IQueryParams) => string[]), context: IShortcutContext & any) => void
 
 export interface IBaseShortcut {
   type: 'field'|'table'|'subquery'|'groupBy'|'orderBy'|'combination'|'nestedSummary'|'summaryField'|'queryCondition'|'dateField'
   name: string
   companions?: string[]|((params: IQueryParams) => string[])
+  [key: string]: any
 }
 
 export interface ITableShortcut extends IBaseShortcut {
@@ -136,45 +137,9 @@ export interface IOrderByArgShortcut extends IBaseShortcut {
   queryArg: (registered: { [key: string]: Expression }) => QueryArg
 }
 
-export interface ICombinationShortcut extends IBaseShortcut {
-  type: 'combination'
-  expression: Expression|((registered: { [key: string]: Expression }) => Expression)
-  registered?: true
-  dateField?: boolean
-}
-
-export interface ICombinationArgShortcut extends IBaseShortcut {
-  type: 'combination'
-  exprArg: (registered: { [key: string]: Expression }) => (params: IQueryParams) => Expression
-  dateField?: boolean
-}
-
-export interface INestedSummaryShortcut extends IBaseShortcut {
-  type: 'nestedSummary'
-  cases: Array<{ typeCode: string; condition: IConditionalExpression|((registered: { [key: string]: Expression }) => IConditionalExpression)}>
-}
-
-export interface ISummaryFieldShortcut extends IBaseShortcut {
-  type: 'summaryField'
-  summaryType: 'count' | 'sum'
-  expression: Expression|((registered: { [key: string]: Expression }) => Expression)
-  inReportExpression?: Expression|((registered: { [key: string]: Expression }) => Expression)
-  jobDateExpression: Expression|((registered: { [key: string]: Expression }) => Expression)
-}
-
-export interface IQueryConditionShortcut extends IBaseShortcut {
-  type: 'queryCondition'
-  query: IQuery|((registered: { [key: string]: Expression }) => IQuery)
-  idExpression: Expression|((registered: { [key: string]: Expression }) => Expression)
-}
-
 export type IShortcut =
   ITableShortcut|ITableArgShortcut|
   IFieldShortcut|IFieldArgShortcut|
   ISubqueryShortcut|ISubqueryArgShortcut|
   IGroupByShortcut|IGroupByArgShortcut|
-  IOrderByShortcut|IOrderByArgShortcut|
-  ICombinationShortcut|ICombinationArgShortcut|
-  INestedSummaryShortcut|
-  ISummaryFieldShortcut|
-  IQueryConditionShortcut
+  IOrderByShortcut|IOrderByArgShortcut
