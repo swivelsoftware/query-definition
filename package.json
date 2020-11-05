@@ -1,6 +1,6 @@
 {
   "name": "query-definition",
-  "version": "1.0.2",
+  "version": "1.0.10",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@types/debug": "^4.1.5",
-    "debug": "^4.1.1",
+    "debug": "^4.2.0",
     "swig-templates": "^2.0.3"
   },
   "peerDependencies": {

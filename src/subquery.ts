@@ -2,6 +2,9 @@ import { IQuery, Query } from 'node-jql'
 import { ICompanions, IQueryParams, SubqueryArg } from './interface'
 import { findUnknowns, newQueryWithoutWildcard } from './utils'
 import * as swig from 'swig-templates'
+import debug = require('debug')
+
+const log = debug('QueryDef:log')
 
 interface IVariable {
   // variable name
@@ -90,7 +93,12 @@ export class SubqueryDef {
         applied.push([variable ? variable.name : '(not-registered)', unknown.value])
       }
 
-      console.debug(`Apply '${name}' with (${applied.map(v => `${v[0]}=${JSON.stringify(v[1])}`).join(', ')})`)
+      if (!applied.length && typeof value === 'object') {
+        const keys = Object.keys(value)
+        for (const k of keys) applied.push([k, value[k]])
+      }
+
+      log(`Apply subquery '${name}' with (${applied.map(v => `${v[0]}=${JSON.stringify(v[1])}`).join(', ')})`)
     } else {
       result = newQueryWithoutWildcard(typeof this.arg === 'function' ? this.arg(params) : this.arg)
     }

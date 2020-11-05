@@ -1,29 +1,19 @@
-import {
-  IExpression,
-  IQuery,
-  Query,
-  ColumnExpression,
-  ResultColumn,
-  AndExpressions,
-  IResultColumn,
-  GroupBy,
-  IConditionalExpression,
-  IGroupedExpressions,
-  IGroupBy,
-  OrderBy,
-  Expression
-} from 'node-jql'
+import { IExpression, IQuery, Query, ColumnExpression, ResultColumn, AndExpressions, IResultColumn, GroupBy, IConditionalExpression, IGroupedExpressions, IGroupBy, OrderBy, Expression } from 'node-jql'
 import _ = require('lodash')
 import { ExpressionArg, GroupByArg, IBaseShortcut, ICompanions, IFieldArgShortcut, IFieldShortcut, IGroupByArgShortcut, IGroupByShortcut, IOrderByArgShortcut, IOrderByShortcut, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, ISubqueryArgShortcut, ISubqueryShortcut, ITableArgShortcut, ITableShortcut, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
 import { SubqueryDef } from './subquery'
 import { fixRegexp, merge, newQueryWithoutWildcard } from './utils'
+import debug = require('debug')
+
+const log = debug('QueryDef:log')
+const warn = debug('QueryDef:warn')
 
 export function registerShortcut<T extends IBaseShortcut>(name: string, func: IShortcutFunc<T>) {
   if (['table', 'field', 'subquery', 'groupBy', 'orderBy'].indexOf(name) === -1) {
     availableShortcuts[name] = func
   }
   else {
-    console.warn(`Shortcut '${name}' cannot be overwritten`)
+    warn(`Shortcut '${name}' cannot be overwritten`)
   }
 }
 
@@ -45,7 +35,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       }
     }
     else {
-      console.warn(`Invalid table:${name}`)
+      warn(`Invalid table:${name}`)
     }
   },
   field: function (this: QueryDef, { name, ...sc }: IFieldShortcut | IFieldArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
@@ -70,7 +60,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       }
     }
     else {
-      console.warn(`Invalid field:${name}`)
+      warn(`Invalid field:${name}`)
     }
   },
   subquery: function (this: QueryDef, { name, ...sc }: ISubqueryShortcut | ISubqueryArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
@@ -111,7 +101,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       }
     }
     else {
-      console.warn(`Invalid subquery:${name}`)
+      warn(`Invalid subquery:${name}`)
     }
   },
   groupBy: function (this: QueryDef, { name, ...sc }: IGroupByShortcut | IGroupByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
@@ -131,7 +121,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       }
     }
     else {
-      console.warn(`Invalid groupBy:${name}`)
+      warn(`Invalid groupBy:${name}`)
     }
   },
   orderBy: function (this: QueryDef, { name, ...sc }: IOrderByShortcut | IOrderByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
@@ -152,7 +142,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       }
     }
     else {
-      console.warn(`Invalid orderBy:${name}`)
+      warn(`Invalid orderBy:${name}`)
     }
   }
 }
@@ -191,6 +181,7 @@ export class QueryDef {
     name = `field:${name}`
     if (!overwrite && this.subqueries[name]) throw new Error(`Field '${name}' already registered`)
     this.subqueries[name] = new SubqueryDef(arg, companion)
+    log(`register ${name}`)
     return this
   }
 
@@ -288,6 +279,7 @@ export class QueryDef {
     name = `table:${name}`
     if (!overwrite && this.subqueries[name]) throw new Error(`Table '${name}' already registered`)
     this.subqueries[name] = new SubqueryDef(arg, companion)
+    log(`register ${name}`)
     return this
   }
 
@@ -317,6 +309,7 @@ export class QueryDef {
     name = `groupBy:${name}`
     if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
     this.subqueries[name] = new SubqueryDef(arg, companion)
+    log(`register ${name}`)
     return this
   }
 
@@ -345,7 +338,12 @@ export class QueryDef {
 
     if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
 
-    return (this.subqueries[name] = new SubqueryDef(arg, companion))
+    try {
+      return (this.subqueries[name] = new SubqueryDef(arg, companion))
+    }
+    finally {
+      log(`register subquery '${name}'`)
+    }
   }
 
   public orderBy(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
@@ -374,6 +372,7 @@ export class QueryDef {
     name = `orderBy:${name}`
     if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
     this.subqueries[name] = new SubqueryDef(arg, companion)
+    log(`register ${name}`)
     return this
   }
 
@@ -393,7 +392,9 @@ export class QueryDef {
           depandCount[key] += count
         }
         path = [...path, key]
-        for (const k of this.subqueries[key].getCompanions(params)) {
+        const companions = this.subqueries[key].getCompanions(params)
+        log(`Apply companions of ${key} = [${companions.join(', ')}]`)
+        for (const k of companions) {
           if (path.indexOf(k) !== -1)
             throw new Error('Recursive dependency: ' + path.join(' -> ') + ' -> ' + k)
           register.apply(this, [k, path])
@@ -464,6 +465,12 @@ export class QueryDef {
       }
     }
 
+    (() => {
+      const { conditions, constants, ...params_ } = params
+      params_['conditions'] = params_['constants'] = '[Object object]'
+      log(`params before: ${JSON.stringify(params_)}`)
+    })()
+
     // apply companions
     params = _.cloneDeep(params)
     if (params.fields) {
@@ -515,6 +522,12 @@ export class QueryDef {
     } else {
       params.sorting = orderbys
     }
+
+    (() => {
+      const { conditions, constants, ...params_ } = params
+      params_['conditions'] = params_['constants'] = '[Object object]'
+      log(`params after: ${JSON.stringify(params_)}`)
+    })()
 
     // prepare base query
     let base: IQuery
@@ -573,8 +586,9 @@ export class QueryDef {
       for (const t of params.tables) {
         const key = `table:${t}`
         if (this.subqueries[key]) {
-          const $from = this.subqueries[key].apply(params).$from
-          merge(base, newQueryWithoutWildcard({ $from }))
+          const { $from, $where } = this.subqueries[key].apply(params)
+          merge(base, newQueryWithoutWildcard({ $from, $where }))
+          log(`Apply ${key}`)
         }
       }
     }
@@ -627,6 +641,7 @@ export class QueryDef {
             const group = newQueryWithoutWildcard({ $group }).$group
             if (!group) throw new Error(`No GROUP BY returned from '${key}'`)
             apply(group)
+            log(`Apply ${key}`)
           } else {
             expressions.push(new ColumnExpression(g))
           }
@@ -662,6 +677,7 @@ export class QueryDef {
             const order = newQueryWithoutWildcard({ $order: value }).$order
             if (!order) throw new Error(`No ORDER BY returned from '${key}'`)
             $order.push(...order)
+            log(`Apply ${key}`)
           } else {
             $order.push(new OrderBy(o))
           }
@@ -784,7 +800,7 @@ export class QueryDef {
         availableShortcuts[type].apply(this, [sc, companions, context])
       }
       else {
-        console.warn(`Invalid ${String(type)}:${name}`)
+        warn(`Invalid ${String(type)}:${name}`)
       }
     }
     return this
