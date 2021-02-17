@@ -22,6 +22,15 @@ export type ResultColumnArg =
 // group by argument
 export type GroupByArg = IGroupBy | ((params: IQueryParams) => IGroupBy)
 
+// options
+export interface IOptions {
+  // apply subquery:default. by default, true
+  withDefault?: boolean
+
+  // skip field if not registered. by default, false
+  skipDefFields?: boolean
+}
+
 // shortcut of ResultColumn
 export interface IResultColumnShortcut {
   // [table, column]

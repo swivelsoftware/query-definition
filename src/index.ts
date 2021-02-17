@@ -1,6 +1,6 @@
 import { IExpression, IQuery, Query, ColumnExpression, ResultColumn, AndExpressions, IResultColumn, GroupBy, IConditionalExpression, IGroupedExpressions, IGroupBy, OrderBy, Expression } from 'node-jql'
 import _ = require('lodash')
-import { ExpressionArg, GroupByArg, IBaseShortcut, ICompanions, IFieldArgShortcut, IFieldShortcut, IGroupByArgShortcut, IGroupByShortcut, IOrderByArgShortcut, IOrderByShortcut, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, ISubqueryArgShortcut, ISubqueryShortcut, ITableArgShortcut, ITableShortcut, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
+import { ExpressionArg, GroupByArg, IBaseShortcut, ICompanions, IFieldArgShortcut, IFieldShortcut, IGroupByArgShortcut, IGroupByShortcut, IOptions, IOrderByArgShortcut, IOrderByShortcut, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, ISubqueryArgShortcut, ISubqueryShortcut, ITableArgShortcut, ITableShortcut, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
 import { SubqueryDef } from './subquery'
 import { fixRegexp, merge, newQueryWithoutWildcard } from './utils'
 import debug = require('debug')
@@ -376,7 +376,10 @@ export class QueryDef {
     return this
   }
 
-  public apply(params: IQueryParams = {}): Query {
+  public apply(params: IQueryParams = {}, options: IOptions = {}): Query {
+    if (options.withDefault === undefined) options.withDefault = true
+    const { withDefault, skipDefFields } = options
+
     if (!params.subqueries) params.subqueries = {}
 
     // register companions
@@ -523,6 +526,15 @@ export class QueryDef {
       params.sorting = orderbys
     }
 
+    // default
+    if (withDefault && this.subqueries['default']) {
+      if (!params.subqueries) params.subqueries = {}
+      params.subqueries = {
+        ...params.subqueries,
+        default: true
+      }
+    }
+
     (() => {
       const { conditions, constants, ...params_ } = params
       params_['conditions'] = params_['constants'] = '[Object object]'
@@ -543,7 +555,7 @@ export class QueryDef {
       const $select = (base.$select = [] as IResultColumn[])
       $select.push(
         ...params.fields.reduce((r, f) => {
-          let fields: IResultColumn | IResultColumn[]
+          let fields: IResultColumn | IResultColumn[] | undefined
 
           // string
           if (typeof f === 'string') {
@@ -554,7 +566,7 @@ export class QueryDef {
               if ($distinct) base.$distinct = true
               fields = newQueryWithoutWildcard({ $select }).$select
               if (!fields.length) throw new Error(`No result columns returned from '${key}'`)
-            } else {
+            } else if (!skipDefFields) {
               fields = { expression: new ColumnExpression(f) }
             }
           }
@@ -574,8 +586,10 @@ export class QueryDef {
             fields = f
           }
 
-          if (!Array.isArray(fields)) fields = [fields]
-          r.push(...fields.map(f => new ResultColumn(f)))
+          if (fields) {
+            if (!Array.isArray(fields)) fields = [fields]
+            r.push(...fields.map(f => new ResultColumn(f)))
+          }
           return r
         }, [] as ResultColumn[])
       )
