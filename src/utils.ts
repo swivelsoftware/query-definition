@@ -75,10 +75,6 @@ export function findUnknowns(arg: Query | FromTable | Expression): Unknown[] {
         result.push(...findUnknowns(orderingTerm.expression))
       }
     }
-
-    if (arg.$union) {
-      result.push(...findUnknowns(arg.$union))
-    }
   } else if (arg instanceof FromTable) {
     for (const joinClause of arg.joinClauses) {
       if (joinClause.$on) {
@@ -237,18 +233,6 @@ export function merge(base: Partial<IQuery>, subquery: Partial<IQuery>) {
   if (subquery.$limit && !base.$limit) {
     base.$limit = subquery.$limit
   }
-
-  if (subquery.$union) {
-    if (!base.$union) {
-      base.$union = subquery.$union
-    } else {
-      let $union = base.$union
-      while ($union.$union) {
-        $union = $union.$union
-      }
-      $union.$union = subquery.$union
-    }
-  }
 }
 
 function mergeTable(
@@ -361,10 +345,6 @@ export function fixRegexp(query: IQuery) {
     if (query.$limit.$offset && typeof query.$limit.$offset !== 'number') {
       fix_(query.$limit.$offset)
     }
-  }
-
-  if (query.$union) {
-    fixRegexp(query.$union)
   }
 }
 
