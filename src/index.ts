@@ -160,7 +160,35 @@ export class QueryDef {
   }
 
   public registered() {
-    return Object.keys(this.subqueries)
+    const keys = Object.keys(this.subqueries).sort()
+    const table: string[] = []
+    const field: string[] = []
+    const subquery: string[] = []
+    const groupBy: string[] = []
+    const orderBy: string[] = []
+    for (const key of keys) {
+      if (key.startsWith('table:')) {
+        table.push(key.substr(6))
+      }
+      else if (key.startsWith('field:')) {
+        field.push(key.substr(6))
+      }
+      else if (key.startsWith('groupBy:')) {
+        groupBy.push(key.substr(8))
+      }
+      else if (key.startsWith('orderBy:')) {
+        orderBy.push(key.substr(8))
+      }
+      else {
+        subquery.push(key)
+      }
+    }
+    table.sort()
+    field.sort()
+    subquery.sort()
+    groupBy.sort()
+    orderBy.sort()
+    return { table, field, subquery, groupBy, orderBy }
   }
 
   public field(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
