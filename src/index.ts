@@ -155,6 +155,10 @@ export class QueryDef {
     this.base = arg
   }
 
+  public registered() {
+    return Object.keys(this.subqueries)
+  }
+
   public field(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
   public field(name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
   public field(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
