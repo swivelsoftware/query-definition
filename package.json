@@ -1,6 +1,6 @@
 {
   "name": "query-definition",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

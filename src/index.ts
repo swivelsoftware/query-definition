@@ -155,6 +155,10 @@ export class QueryDef {
     this.base = arg
   }
 
+  public baseQuery(type: string) {
+    return typeof this.base === 'function' ? '[Function]' : new Query(this.base).toString(type as any)
+  }
+
   public registered() {
     return Object.keys(this.subqueries)
   }
