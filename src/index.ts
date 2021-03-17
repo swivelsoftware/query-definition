@@ -18,7 +18,7 @@ export function registerShortcut<T extends IBaseShortcut>(name: string, func: IS
 }
 
 const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
-  table: function (this: QueryDef, { name, ...sc }: ITableShortcut | ITableArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  table: function (this: QueryDef, { override = false, name, ...sc }: ITableShortcut | ITableArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('fromTable' in sc) {
       queryArg = { $from: typeof sc.fromTable === 'function' ? sc.fromTable(context.registered) : sc.fromTable }
@@ -28,17 +28,17 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
     }
     if (queryArg) {
       if (typeof companions === 'function') {
-        this.table(name, queryArg, companions)
+        this.table(override, name, queryArg, companions)
       }
       else {
-        this.table(name, queryArg, ...companions)
+        this.table(override, name, queryArg, ...companions)
       }
     }
     else {
       warn(`Invalid table:${name}`)
     }
   },
-  field: function (this: QueryDef, { name, ...sc }: IFieldShortcut | IFieldArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  field: function (this: QueryDef, { override = false, name, ...sc }: IFieldShortcut | IFieldArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       const expression = typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression
@@ -53,17 +53,17 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
     }
     if (queryArg) {
       if (typeof companions === 'function') {
-        this.field(name, queryArg, companions)
+        this.field(override, name, queryArg, companions)
       }
       else {
-        this.field(name, queryArg, ...companions)
+        this.field(override, name, queryArg, ...companions)
       }
     }
     else {
       warn(`Invalid field:${name}`)
     }
   },
-  subquery: function (this: QueryDef, { name, ...sc }: ISubqueryShortcut | ISubqueryArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  subquery: function (this: QueryDef, { override = false, name, ...sc }: ISubqueryShortcut | ISubqueryArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let subqueryArg: SubqueryArg | undefined
     if ('expression' in sc) {
       subqueryArg = { $where: typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression }
@@ -74,10 +74,10 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
     let subqueryDef: SubqueryDef
     if (subqueryArg) {
       if (typeof companions === 'function') {
-        subqueryDef = this.subquery(name, subqueryArg, companions)
+        subqueryDef = this.subquery(override, name, subqueryArg, companions)
       }
       else {
-        subqueryDef = this.subquery(name, subqueryArg, ...companions)
+        subqueryDef = this.subquery(override, name, subqueryArg, ...companions)
       }
       if ('unknowns' in sc) {
         if (Array.isArray(sc.unknowns)) {
@@ -104,7 +104,7 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
       warn(`Invalid subquery:${name}`)
     }
   },
-  groupBy: function (this: QueryDef, { name, ...sc }: IGroupByShortcut | IGroupByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  groupBy: function (this: QueryDef, { override = false, name, ...sc }: IGroupByShortcut | IGroupByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       queryArg = { $group: new GroupBy([typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression]) }
@@ -114,17 +114,17 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
     }
     if (queryArg) {
       if (typeof companions === 'function') {
-        this.groupBy(name, queryArg, companions)
+        this.groupBy(override, name, queryArg, companions)
       }
       else {
-        this.groupBy(name, queryArg, ...companions)
+        this.groupBy(override, name, queryArg, ...companions)
       }
     }
     else {
       warn(`Invalid groupBy:${name}`)
     }
   },
-  orderBy: function (this: QueryDef, { name, ...sc }: IOrderByShortcut | IOrderByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
+  orderBy: function (this: QueryDef, { override = false, name, ...sc }: IOrderByShortcut | IOrderByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
     let queryArg: QueryArg | undefined
     if ('expression' in sc) {
       const direction: 'ASC'|'DESC' = sc['direction'] || 'ASC'
@@ -135,10 +135,10 @@ const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
     }
     if (queryArg) {
       if (typeof companions === 'function') {
-        this.orderBy(name, queryArg, companions)
+        this.orderBy(override, name, queryArg, companions)
       }
       else {
-        this.orderBy(name, queryArg, ...companions)
+        this.orderBy(override, name, queryArg, ...companions)
       }
     }
     else {

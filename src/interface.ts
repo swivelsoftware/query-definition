@@ -79,6 +79,7 @@ export interface IShortcutContext {
 export type IShortcutFunc<T extends IBaseShortcut> = (this: QueryDef, sc: T, companions: string[] | ((params: IQueryParams) => string[]), context: IShortcutContext & any) => void
 
 export interface IBaseShortcut {
+  override?: boolean
   type: 'field'|'table'|'subquery'|'groupBy'|'orderBy'|string
   name: string
   companions?: string[]|((params: IQueryParams) => string[])
