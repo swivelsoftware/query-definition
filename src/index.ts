@@ -1,171 +1,55 @@
-import { IExpression, IQuery, Query, ColumnExpression, ResultColumn, AndExpressions, IResultColumn, GroupBy, IConditionalExpression, IGroupedExpressions, IGroupBy, OrderBy, Expression } from 'node-jql'
-import _ = require('lodash')
-import { ExpressionArg, GroupByArg, IBaseShortcut, ICompanions, IFieldArgShortcut, IFieldShortcut, IGroupByArgShortcut, IGroupByShortcut, IOptions, IOrderByArgShortcut, IOrderByShortcut, IQueryParams, IShortcut, IShortcutContext, IShortcutFunc, ISubqueryArgShortcut, ISubqueryShortcut, ITableArgShortcut, ITableShortcut, QueryArg, ResultColumnArg, SubqueryArg } from './interface'
-import { SubqueryDef } from './subquery'
-import { fixRegexp, merge, newQueryWithoutWildcard } from './utils'
 import debug = require('debug')
+import _ from 'lodash'
+import { AndExpressions, ColumnExpression, GroupBy, IConditionalExpression, IExpression, IGroupBy, IGroupedExpressions, IQuery, IResultColumn, OrderBy, Query, ResultColumn } from 'node-jql'
+import { ExpressionArg, GroupByArg, Prerequisite, QueryArg, ResultColumnArg, SubqueryArg, IOptions } from './interface'
+import { IQueryParams, FieldParams, GroupByParams, OrderByParams } from './queryParams'
+import { SubqueryDef } from './subquery'
+import { dummyQuery, mergePrerequisite, mergeQuery } from './utils'
+import { FixRegexpProcessor, PostProcessor } from './postProcessors'
+import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts } from './shortcuts'
 
 const log = debug('QueryDef:log')
 const warn = debug('QueryDef:warn')
 
-export function registerShortcut<T extends IBaseShortcut>(name: string, func: IShortcutFunc<T>) {
-  if (['table', 'field', 'subquery', 'groupBy', 'orderBy'].indexOf(name) === -1) {
-    availableShortcuts[name] = func
-  }
-  else {
-    warn(`Shortcut '${name}' cannot be overwritten`)
-  }
-}
-
-const availableShortcuts: { [key: string]: IShortcutFunc<any> } = {
-  table: function (this: QueryDef, { override = false, name, ...sc }: ITableShortcut | ITableArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
-    let queryArg: QueryArg | undefined
-    if ('fromTable' in sc) {
-      queryArg = { $from: typeof sc.fromTable === 'function' ? sc.fromTable(context.registered) : sc.fromTable }
-    }
-    else if ('queryArg' in sc) {
-      queryArg = sc.queryArg(context.registered)
-    }
-    if (queryArg) {
-      if (typeof companions === 'function') {
-        this.table(override, name, queryArg, companions)
-      }
-      else {
-        this.table(override, name, queryArg, ...companions)
-      }
-    }
-    else {
-      warn(`Invalid table:${name}`)
-    }
-  },
-  field: function (this: QueryDef, { override = false, name, ...sc }: IFieldShortcut | IFieldArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
-    let queryArg: QueryArg | undefined
-    if ('expression' in sc) {
-      const expression = typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression
-      if ('registered' in sc && sc.registered) {
-        context.registered[name] = expression
-        if (typeof companions !== 'function') context.registeredCompanions[name] = companions
-      }
-      queryArg = { $select: new ResultColumn(expression, name) }
-    }
-    else if ('queryArg' in sc) {
-      queryArg = sc.queryArg(context.registered)
-    }
-    if (queryArg) {
-      if (typeof companions === 'function') {
-        this.field(override, name, queryArg, companions)
-      }
-      else {
-        this.field(override, name, queryArg, ...companions)
-      }
-    }
-    else {
-      warn(`Invalid field:${name}`)
-    }
-  },
-  subquery: function (this: QueryDef, { override = false, name, ...sc }: ISubqueryShortcut | ISubqueryArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
-    let subqueryArg: SubqueryArg | undefined
-    if ('expression' in sc) {
-      subqueryArg = { $where: typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression }
-    }
-    else if ('subqueryArg' in sc) {
-      subqueryArg = sc.subqueryArg(context.registered)
-    }
-    let subqueryDef: SubqueryDef
-    if (subqueryArg) {
-      if (typeof companions === 'function') {
-        subqueryDef = this.subquery(override, name, subqueryArg, companions)
-      }
-      else {
-        subqueryDef = this.subquery(override, name, subqueryArg, ...companions)
-      }
-      if ('unknowns' in sc) {
-        if (Array.isArray(sc.unknowns)) {
-          for (const [name, index] of sc.unknowns) {
-            subqueryDef.register(name, index)
-          }
-        }
-        else if (sc.unknowns && typeof sc.unknowns !== 'boolean' && sc.unknowns.fromTo) {
-          const noOfUnknowns = sc.unknowns.noOfUnknowns || 2
-          for (let i = 0, length = noOfUnknowns; i < length; i += 2) {
-            subqueryDef.register('from', i)
-            subqueryDef.register('to', i + 1)
-          }
-        }
-        else if (sc.unknowns) {
-          const noOfUnknowns = typeof sc.unknowns !== 'boolean' && sc.unknowns.noOfUnknowns || 1
-          for (let i = 0, length = noOfUnknowns; i < length; i += 1) {
-            subqueryDef.register('value', i)
-          }
-        }
-      }
-    }
-    else {
-      warn(`Invalid subquery:${name}`)
-    }
-  },
-  groupBy: function (this: QueryDef, { override = false, name, ...sc }: IGroupByShortcut | IGroupByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
-    let queryArg: QueryArg | undefined
-    if ('expression' in sc) {
-      queryArg = { $group: new GroupBy([typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression]) }
-    }
-    else if ('queryArg' in sc) {
-      queryArg = sc.queryArg(context.registered)
-    }
-    if (queryArg) {
-      if (typeof companions === 'function') {
-        this.groupBy(override, name, queryArg, companions)
-      }
-      else {
-        this.groupBy(override, name, queryArg, ...companions)
-      }
-    }
-    else {
-      warn(`Invalid groupBy:${name}`)
-    }
-  },
-  orderBy: function (this: QueryDef, { override = false, name, ...sc }: IOrderByShortcut | IOrderByArgShortcut, companions: string[] | ((params: IQueryParams) => string[]), context: any) {
-    let queryArg: QueryArg | undefined
-    if ('expression' in sc) {
-      const direction: 'ASC'|'DESC' = sc['direction'] || 'ASC'
-      queryArg = { $order: new OrderBy(typeof sc.expression === 'function' ? sc.expression(context.registered) : sc.expression, direction) }
-    }
-    else if ('queryArg' in sc) {
-      queryArg = sc.queryArg(context.registered)
-    }
-    if (queryArg) {
-      if (typeof companions === 'function') {
-        this.orderBy(override, name, queryArg, companions)
-      }
-      else {
-        this.orderBy(override, name, queryArg, ...companions)
-      }
-    }
-    else {
-      warn(`Invalid orderBy:${name}`)
-    }
-  }
-}
-
 export class QueryDef {
-  protected readonly base: QueryArg
-  protected readonly subqueries: { [key: string]: SubqueryDef } = {}
+  static readonly postProcessors: PostProcessor[] = [
+    FixRegexpProcessor
+  ]
 
-  constructor(arg: QueryArg) {
-    this.base = arg
+  static readonly shortcuts: { [key: string]: ShortcutFunc<any> } = {
+    field: FieldShortcutFunc,
+    table: TableShortcutFunc,
+    subquery: SubqueryShortcutFunc,
+    groupBy: GroupByShortcutFunc,
+    orderBy: OrderByShortcutFunc
   }
 
-  public baseQuery(type: string) {
+  static registerShortcut<T extends IBaseShortcut>(name: string, func: ShortcutFunc<T>) {
+    if (['table', 'field', 'subquery', 'groupBy', 'orderBy'].indexOf(name) === -1) {
+      QueryDef.shortcuts[name] = func
+    }
+    else {
+      warn(`Default shortcut '${name}' cannot be overwritten`)
+    }
+  }
+
+  private readonly subqueries: { [key: string]: SubqueryDef } = {}
+
+  constructor(private readonly base: QueryArg) {}
+
+  baseQuery(type: string) {
     return typeof this.base === 'function' ? '[Function]' : new Query(this.base).toString(type as any)
   }
 
-  public registered() {
+  registered() {
     const keys = Object.keys(this.subqueries).sort()
+
     const table: string[] = []
     const field: string[] = []
     const subquery: string[] = []
     const groupBy: string[] = []
     const orderBy: string[] = []
+
     for (const key of keys) {
       if (key.startsWith('table:')) {
         table.push(key.substr(6))
@@ -183,503 +67,432 @@ export class QueryDef {
         subquery.push(key)
       }
     }
-    table.sort()
-    field.sort()
-    subquery.sort()
-    groupBy.sort()
-    orderBy.sort()
-    return { table, field, subquery, groupBy, orderBy }
+
+    return {
+      table: table.sort(),
+      field: field.sort(),
+      subquery: subquery.sort(),
+      groupBy: groupBy.sort(),
+      orderBy: orderBy.sort()
+    }
   }
 
-  public field(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public field(name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public field(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public field(name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public field(...args: any[]): QueryDef {
-    let overwrite = false,
-      name: string,
-      arg: QueryArg,
-      companion: ICompanions
+  private commonFunc<T>(funcName: string, prefix = funcName): (...args: any[]) => SubqueryDef {
+    return (...args: any[]) => {
+      if (typeof args[0] === 'boolean') {
+        warn(`QueryDef.${funcName}(overwrite: boolean, ...) is deprecated. use the one without @param overwrite instead`)
+        args = args.slice(1)
+      }
+  
+      let name = args[0] as string, arg = args[1] as T
+      let prerequisite: Prerequisite = []
+      if (args[2]) {
+        if (typeof args[2] !== 'string') {
+          prerequisite = args[2] as Prerequisite
+        }
+        else {
+          warn(`QueryDef.${funcName}(..., ...companion: string[]) is deprecated. use the one with @param prerequisite instead`)
+          prerequisite = args.slice(2) as string[]
+        }
+      }
+      if (!name) throw new Error(`Missing ${funcName} name`)
+      if (name.endsWith(':')) throw new Error(`Invalid ${funcName} name: ${name}`)
 
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = typeof args[2] === 'function' ? args[2] : args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
+      if (prefix) name = `${prefix}:${name}`
+      // always overwrite
+      if (this.subqueries[name]) warn(`${name} overwritten`)
+      try{
+        return this.subqueries[name] = new SubqueryDef(arg, prerequisite)
+      }
+      finally {
+        log(`${name} registered`)
+      }
     }
+  }
 
-    if (!name) throw new Error(`Invalid name '${name}'`)
+  subquery(overwrite: boolean, name: string, arg: SubqueryArg, prerequisite?: Prerequisite): SubqueryDef
+  subquery(overwrite: boolean, name: string, arg: SubqueryArg, ...companion: string[]): SubqueryDef
+  subquery(name: string, arg: SubqueryArg, prerequisite?: Prerequisite): SubqueryDef
+  subquery(name: string, arg: SubqueryArg, ...companion: string[]): SubqueryDef
+  subquery(...args: any[]): SubqueryDef {
+    return this.commonFunc<SubqueryArg>('subquery', '')(...args)
+  }
 
-    name = `field:${name}`
-    if (!overwrite && this.subqueries[name]) throw new Error(`Field '${name}' already registered`)
-    this.subqueries[name] = new SubqueryDef(arg, companion)
-    log(`register ${name}`)
+  field(overwrite: boolean, name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  field(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  field(name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  field(name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  field(...args: any[]): QueryDef {
+    this.commonFunc<QueryArg>('field')(...args)
     return this
   }
 
-  public groupField( overwrite: boolean, name: string, arg: ExpressionArg, prefix?: string, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public groupField( name: string, arg: ExpressionArg, prefix?: string, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public groupField( overwrite: boolean, name: string, arg: ExpressionArg, prefix?: string, ...companion: string[]): QueryDef
-  public groupField( name: string, arg: ExpressionArg, prefix?: string, ...companion: string[]): QueryDef
-  public groupField(...args: any[]): QueryDef {
-    let overwrite = false,
-      name: string,
-      arg: ExpressionArg,
-      prefix: string,
-      companion: ICompanions
+  table(overwrite: boolean, name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  table(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  table(name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  table(name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  table(...args: any[]): QueryDef {
+    this.commonFunc<QueryArg>('table')(...args)
+    return this
+  }
 
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      prefix = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      prefix = args[3]
-      companion = typeof args[4] === 'function' ? args[4] : args.slice(4)
+  groupBy(overwrite: boolean, name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  groupBy(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  groupBy(name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  groupBy(name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  groupBy(...args: any[]): QueryDef {
+    this.commonFunc<QueryArg>('groupBy')(...args)
+    return this
+  }
+
+  orderBy(overwrite: boolean, name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  orderBy(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  orderBy(name: string, arg: QueryArg, prerequisite?: Prerequisite): QueryDef
+  orderBy(name: string, arg: QueryArg, ...companion: string[]): QueryDef
+  orderBy(...args: any[]): QueryDef {
+    this.commonFunc<QueryArg>('orderBy')(...args)
+    return this
+  }
+
+  groupField(overwrite: boolean, name: string, arg: ExpressionArg, prefix: string, prerequisite?: Prerequisite): QueryDef
+  groupField(overwrite: boolean, name: string, arg: ExpressionArg, prefix: string, ...companion: string[]): QueryDef
+  groupField(name: string, arg: ExpressionArg, prefix: string, prerequisite?: Prerequisite): QueryDef
+  groupField(name: string, arg: ExpressionArg, prefix: string, ...companion: string[]): QueryDef
+  groupField(...args: any[]): QueryDef {
+    if (typeof args[0] === 'boolean') {
+      warn('QueryDef.groupField(overwrite: boolean, ...) is deprecated. use the one without @param overwrite instead')
+      args = args.slice(1)
     }
 
-    if (!name) throw new Error(`Invalid name '${name}'`)
-
-    function get(arg: ExpressionArg, params: IQueryParams): IExpression {
-      return typeof arg === 'function' ? arg(params) : arg
+    let name = args[0] as string, arg = args[1] as ExpressionArg, prefix = args[2] as string
+    let prerequisite: Prerequisite = []
+    if (args[3]) {
+      if (typeof args[3] !== 'string') {
+        prerequisite = args[3] as Prerequisite
+      }
+      else {
+        warn('QueryDef.groupField(..., ...companion: string[]) is deprecated. use the one with @param prerequisite instead')
+        prerequisite = args.slice(3) as string[]
+      }
     }
-    function check(name: string, params: IQueryParams): boolean {
+    if (!name) throw new Error('Missing group field name')
+
+    async function get(arg: ExpressionArg, params: IQueryParams) {
+      return typeof arg === 'function' ? await arg(params) : arg
+    }
+    function check(name: string, params: IQueryParams) {
       if (params.fields && params.fields.length && params.groupBy && params.groupBy.length) {
         return params.fields.indexOf(name) > -1 && params.groupBy.indexOf(name) > -1
       }
       return false
     }
+    this.field(
+      name,
+      async params => {
+        const expr = await get(arg, params)
+        let resultColumn: ResultColumn
+        if (check(name, params)) {
+          resultColumn = new ResultColumn(expr, `${prefix}${name}`)
+        } else {
+          resultColumn = new ResultColumn(expr, name)
+        }
+        return { $select: [resultColumn] } as Partial<IQuery>
+      },
+      prerequisite
+    )
+    this.groupBy(
+      name,
+      async params => {
+        let groupBy: GroupBy
+        if (check(name, params)) {
+          groupBy = new GroupBy(`${prefix}${name}`)
+        } else {
+          groupBy = new GroupBy(await get(arg, params))
+        }
+        return { $group: groupBy } as Partial<IQuery>
+      },
+      prerequisite
+    )
 
-    // register field and sub-query
-    const func = params => {
-      const expr = get(arg, params)
-      let resultColumn: ResultColumn
-      if (check(name, params)) {
-        resultColumn = new ResultColumn(expr, `${prefix}${name}`)
-      } else {
-        resultColumn = new ResultColumn(expr, name)
-      }
-      return { $select: [resultColumn] } as Partial<IQuery>
+    return this
+  }
+
+  // backward compatible
+  register(name: string, arg: IResultColumn | IGroupBy, ...companion: string[])
+  register(name: string, arg: QueryArg, ...companion: string[]): SubqueryDef
+  register(name: string, arg: QueryArg | IResultColumn | IGroupBy, ...companion: string[]): any {
+    if (arg instanceof Query || typeof arg === 'function') {
+      warn('QueryDef.register(...) is deprecated. use QueryDef.subquery(...) instead')
+      return this.subquery(name, arg, companion)
     }
-    const func2 = params => {
-      let groupBy: GroupBy
-      if (check(name, params)) {
-        groupBy = new GroupBy(`${prefix}${name}`)
-      } else {
-        groupBy = new GroupBy(get(arg, params))
-      }
-      return { $group: groupBy } as Partial<IQuery>
+    else if ('expression' in arg) {
+      warn('QueryDef.register(...) is deprecated. use QueryDef.field(...) instead')
+      return this.field(name, () => ({ $select: arg }), companion)
     }
-    if (Array.isArray(companion)) {
-      this.field(overwrite, name, func, ...companion)
-      this.groupBy(overwrite, name, func2, ...companion)
+    else if ('classname' in arg && arg.classname === 'GroupBy') {
+      warn('QueryDef.register(...) is deprecated. use QueryDef.groupBy(...) instead')
+      return this.groupBy(name, () => ({ $group: arg as IGroupBy }), companion)
     }
     else {
-      this.field(overwrite, name, func, companion)
-      this.groupBy(overwrite, name, func2, companion)
+      warn('QueryDef.register(...) is deprecated. use QueryDef.subquery(...) instead')
+      return this.subquery(name, arg as Partial<IQuery>, companion)
+    }
+  }
+
+  // backward compatible
+  registerQuery(name: string, arg: QueryArg, ...companion: string[]): SubqueryDef {
+    warn('QueryDef.registerQuery(...) is deprecated. use QueryDef.field(...) instead')
+    return this.subquery(name, arg, companion)
+  }
+
+  // backward compatible
+  registerResultColumn(name: string, arg: ResultColumnArg, ...companion: string[]): QueryDef {
+    warn('QueryDef.registerResultColumn(...) is deprecated. use QueryDef.field(...) instead')
+    return this.field(name, async params => ({ $select: typeof arg === 'function' ? await arg(params) : arg }), companion)
+  }
+
+  // backward compatible
+  registerGroupBy(name: string, arg: GroupByArg, ...companion: string[]) {
+    warn('QueryDef.registerGroupBy(...) is deprecated. use QueryDef.groupBy(...) instead')
+    return this.groupBy(name, async params => ({ $group: typeof arg === 'function' ? await arg(params) : arg }), companion)
+  }
+
+  // backward compatible
+  registerBoth(overwrite: boolean, name: string, arg: ExpressionArg, ...companion: string[])
+  registerBoth(name: string, arg: ExpressionArg, ...companion: string[])
+  registerBoth(...args: any[]) {
+    warn('QueryDef.registerBoth(...) is deprecated. use QueryDef.groupField(...) instead')
+    if (typeof args[0] === 'boolean') args = args.slice(1)
+    return this.groupField(args[0] as string, args[1] as ExpressionArg, 'group_', args.slice(2))
+  }
+
+  useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): QueryDef {
+    let prerequisite: Prerequisite | undefined, regPrerequisites: { [key: string]: Prerequisite } = {}
+    const registered: { [key: string]: IExpression } = new Proxy({}, {
+      get(target, name) {
+        if (!target[name]) throw new Error(`Expression '${String(name)}' not registered`)
+        try {
+          return target[name]
+        }
+        finally {
+          let left = prerequisite
+          let right = regPrerequisites[name as string]
+          prerequisite = left && right ? mergePrerequisite(left, right) : right || left
+        }
+      }
+    })
+    const context: IShortcutContext = { registered, regPrerequisites, options }
+    
+    for (const shortcut of shortcuts) {
+      const { type } = shortcut
+      prerequisite = shortcut.prerequisite || shortcut.companions
+      if (QueryDef.shortcuts[type]) {
+        QueryDef.shortcuts[type].bind(this)(shortcut, context)
+      }
+      else {
+        warn(`Invalid shortcut type ${type}`)
+      }
     }
 
     return this
   }
 
-  public table(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public table(name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public table(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public table(name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public table(...args: any[]): QueryDef {
-    let overwrite = false,
-      name: string,
-      arg: QueryArg,
-      companion: ICompanions
-
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = typeof args[2] === 'function' ? args[2] : args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
-    }
-
-    if (!name) throw new Error(`Invalid name '${name}'`)
-
-    name = `table:${name}`
-    if (!overwrite && this.subqueries[name]) throw new Error(`Table '${name}' already registered`)
-    this.subqueries[name] = new SubqueryDef(arg, companion)
-    log(`register ${name}`)
-    return this
-  }
-
-  public groupBy(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public groupBy(name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public groupBy(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public groupBy(name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public groupBy(...args: any[]): QueryDef {
-    let overwrite = false,
-      name: string,
-      arg: QueryArg,
-      companion: ICompanions
-
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = typeof args[2] === 'function' ? args[2] : args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
-    }
-
-    if (!name) throw new Error(`Invalid name '${name}'`)
-
-    name = `groupBy:${name}`
-    if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
-    this.subqueries[name] = new SubqueryDef(arg, companion)
-    log(`register ${name}`)
-    return this
-  }
-
-  public subquery(overwrite: boolean, name: string, arg: SubqueryArg, getCompanions?: (params: IQueryParams) => string[]): SubqueryDef
-  public subquery(name: string, arg: SubqueryArg, getCompanions?: (params: IQueryParams) => string[]): SubqueryDef
-  public subquery(overwrite: boolean, name: string, arg: SubqueryArg, ...companion: string[]): SubqueryDef
-  public subquery(name: string, arg: SubqueryArg, ...companion: string[]): SubqueryDef
-  public subquery(...args: any[]): SubqueryDef {
-    let overwrite = false,
-      name: string,
-      arg: SubqueryArg,
-      companion: ICompanions
-
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = typeof args[2] === 'function' ? args[2] : args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
-    }
-
-    if (!name || name.endsWith(':')) throw new Error(`Invalid name '${name}'`)
-
-    if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
-
-    try {
-      return (this.subqueries[name] = new SubqueryDef(arg, companion))
-    }
-    finally {
-      log(`register subquery '${name}'`)
-    }
-  }
-
-  public orderBy(overwrite: boolean, name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public orderBy(name: string, arg: QueryArg, getCompanions?: (params: IQueryParams) => string[]): QueryDef
-  public orderBy(overwrite: boolean, name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public orderBy(name: string, arg: QueryArg, ...companion: string[]): QueryDef
-  public orderBy(...args: any[]): QueryDef {
-    let overwrite = false,
-      name: string,
-      arg: QueryArg,
-      companion: ICompanions
-
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = typeof args[2] === 'function' ? args[2] : args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = typeof args[3] === 'function' ? args[3] : args.slice(3)
-    }
-
-    if (!name) throw new Error(`Invalid name '${name}'`)
-
-    name = `orderBy:${name}`
-    if (!overwrite && this.subqueries[name]) throw new Error(`Sub-query '${name}' already registered`)
-    this.subqueries[name] = new SubqueryDef(arg, companion)
-    log(`register ${name}`)
-    return this
-  }
-
-  public apply(params: IQueryParams = {}, options: IOptions = {}): Query {
+  async apply(params: IQueryParams = {}, options: IOptions = {}): Promise<Query> {
     if (options.withDefault === undefined) options.withDefault = true
     const { withDefault, skipDefFields } = options
 
-    if (!params.subqueries) params.subqueries = {}
+    // query params before preparation
+    {
+      const { conditions, constants, ...params_ } = params
+      params_['conditions'] = params_['constants'] = '[Object object]'
+      log(`params before: ${JSON.stringify(params_)}`)
+    }
 
-    // register companions
-    let allCompanions: string[] = []
-    const depandCount: { [key: string]: number } = {}
-    function register(this: QueryDef, key: string, path: string[] = []) {
-      if (this.subqueries[key]) {
+    // prepare query params
+    params = _.cloneDeep(params)
+    if (!params.subqueries) params.subqueries = {}
+    if (params.sorting && !Array.isArray(params.sorting)) params.sorting = [params.sorting]
+
+    const allCompanions: string[] = [], depandCount: { [key: string]: number } = {}, subqueries = this.subqueries
+
+    async function register(key: string, registered: string[] = []) {
+      if (subqueries[key]) {
         if (allCompanions.indexOf(key) === -1) allCompanions.push(key)
-        const count = path.length
-        if (depandCount[key] === undefined) {
-          depandCount[key] = count
-        } else {
-          depandCount[key] += count
+        const count = registered.length
+        depandCount[key] = depandCount[key] === undefined ? count : depandCount[key] + count
+        registered = [...registered, key]
+
+        const prerequisite = await subqueries[key].applyPrerequisite(params)
+        if (Array.isArray(prerequisite)) {
+          for (const k of prerequisite) {
+            if (registered.indexOf(k) === -1) throw new Error(`Recursive dependency: ${registered.join(' -> ')} -> ${k}`)
+            await register(k, registered)
+          }
         }
-        path = [...path, key]
-        const companions = this.subqueries[key].getCompanions(params)
-        log(`Apply companions of ${key} = [${companions.join(', ')}]`)
-        for (const k of companions) {
-          if (path.indexOf(k) !== -1)
-            throw new Error('Recursive dependency: ' + path.join(' -> ') + ' -> ' + k)
-          register.apply(this, [k, path])
-        }
-      } else if (path.length) {
+      }
+      else if (registered.length) {
         throw new Error(`Companion '${key}' not found`)
       }
     }
-    for (const f of params.fields || []) {
-      if (typeof f === 'string') {
-        const key = `field:${f}`
-        register.apply(this, [key])
-      }
-    }
-    for (const t of params.tables || []) {
-      const key = `table:${t}`
-      register.apply(this, [key])
-    }
-    for (const s of Object.keys(params.subqueries)) {
-      register.apply(this, [s])
-    }
-    for (const g of params.groupBy || []) {
-      if (typeof g === 'string') {
-        const key = `groupBy:${g}`
-        register.apply(this, [key])
-      }
-    }
-    if (params.sorting) {
-      for (const o of !Array.isArray(params.sorting) ? [params.sorting] : params.sorting) {
-        if (typeof o === 'string') {
-          const key = `orderBy:${o}`
-          register.apply(this, [key])
+
+    async function checkPrerequisite(attr: string, prefix?: string) {
+      let array = params[attr] || []
+      if (!Array.isArray(array)) array = Object.keys(array)
+
+      for (const key of array) {
+        if (typeof key === 'string') {
+          const target = prefix ? `${prefix}:${key}` : key
+          await register(target)
         }
       }
     }
 
-    // sort companions
-    allCompanions = [...new Set(allCompanions)].sort((l, r) => {
+    await checkPrerequisite('fields', 'field')
+    await checkPrerequisite('tables', 'table')
+    await checkPrerequisite('subqueries')
+    await checkPrerequisite('groupBy', 'groupBy')
+    await checkPrerequisite('sorting', 'orderBy')
+
+    allCompanions.sort((l, r) => {
       const lc = depandCount[l]
       const rc = depandCount[r]
       return lc < rc ? 1 : lc > rc ? -1 : 0
     })
 
-    // classify companions
-    const fields: string[] = []
-    const tables: string[] = []
-    const subqueries: string[] = []
-    const groupbys: string[] = []
-    const orderbys: string[] = []
-    for (const k of allCompanions) {
+    const companions = allCompanions.reduce<{ field: string[]; table: string[]; subquery: string[]; groupBy: string[]; orderBy: string[] }>((r, k) => {
       const pcs = k.split(':')
-      switch (pcs[0]) {
-        case 'field':
-          fields.push(pcs[1])
-          break
-        case 'table':
-          tables.push(pcs[1])
-          break
-        case 'groupBy':
-          groupbys.push(pcs[1])
-          break
-        case 'orderBy':
-          orderbys.push(pcs[1])
-          break
-        default:
-          subqueries.push(k)
-          break
+      let type = 'subquery'
+      if (['field', 'table', 'groupBy', 'orderBy'].indexOf(pcs[0]) > -1) type = pcs[0]
+      if (!r[type]) r[type] = []
+      r[type].push(pcs[type === 'subquery' ? 0 : 1])
+      return r
+    }, { field: [], table: [], subquery: [], groupBy: [], orderBy: [] })
+
+    if (!params.fields) params.fields = []
+    params.fields = params.fields.reduce<FieldParams[]>((r, f) => {
+      if (typeof f !== 'string' || r.indexOf(f) === -1) r.push(f)
+      return r
+    }, companions.field)
+
+    if (!params.tables) params.tables = []
+    params.tables = params.tables.reduce<string[]>((r, t) => {
+      if (r.indexOf(t) === -1) r.push(t)
+      return r
+    }, companions.table)
+
+    if (!params.subqueries) params.subqueries = {}
+    for (const s of companions.subquery) {
+      if (!params.subqueries[s] && this.subqueries[s]) {
+        params.subqueries[s] = this.subqueries[s].default
       }
     }
 
-    (() => {
-      const { conditions, constants, ...params_ } = params
-      params_['conditions'] = params_['constants'] = '[Object object]'
-      log(`params before: ${JSON.stringify(params_)}`)
-    })()
+    if (!params.groupBy) params.groupBy = []
+    params.groupBy = companions.groupBy.reduce<GroupByParams[]>((r, g) => {
+      if (r.indexOf(g) === -1) r.push(g)
+      return r
+    }, params.groupBy)
 
-    // apply companions
-    params = _.cloneDeep(params)
-    if (params.fields) {
-      params.fields = params.fields.reduce<any[]>((r, f) => {
-        if (typeof f !== 'string' || r.indexOf(f) === -1) r.push(f)
-        return r
-      }, fields)
-    } else {
-      params.fields = fields
-    }
-    if (params.tables) {
-      params.tables = params.tables.reduce<any[]>((r, f) => {
-        if (typeof f !== 'string' || r.indexOf(f) === -1) r.push(f)
-        return r
-      }, tables)
-    } else {
-      params.tables = tables
-    }
-    if (params.subqueries) {
-      for (const s of subqueries) {
-        if (!params.subqueries[s] && this.subqueries[s]) {
-          params.subqueries[s] = this.subqueries[s].default
-        }
-      }
-    } else {
-      params.subqueries = subqueries.reduce((r, s) => {
-        if (this.subqueries[s]) {
-          r[s] = this.subqueries[s].default
-          return r
-        }
-      }, {} as any)
-    }
-    if (params.groupBy) {
-      params.groupBy = groupbys.reduce<any[]>((r, f) => {
-        if (r.indexOf(f) === -1) r.push(f)
-        return r
-      }, params.groupBy)
-    } else {
-      params.groupBy = groupbys
-    }
-    if (params.sorting) {
-      if (!Array.isArray(params.sorting)) {
-        params.sorting = [params.sorting]
-      }
-      params.sorting = orderbys.reduce<any[]>((r, f) => {
-        if (r.indexOf(f) === -1) r.push(f)
-        return r
-      }, params.sorting)
-    } else {
-      params.sorting = orderbys
+    if (!params.sorting) params.sorting = []
+    params.sorting = companions.orderBy.reduce<OrderByParams[]>((r, o) => {
+      if (r.indexOf(o) === -1) r.push(o)
+      return r
+    }, params.sorting as OrderBy[])
+
+    if (withDefault && this.subqueries.default) {
+      params.subqueries.default = true
     }
 
-    // default
-    if (withDefault && this.subqueries['default']) {
-      if (!params.subqueries) params.subqueries = {}
-      params.subqueries = {
-        ...params.subqueries,
-        default: true
-      }
-    }
-
-    (() => {
+    // prepared query params
+    {
       const { conditions, constants, ...params_ } = params
       params_['conditions'] = params_['constants'] = '[Object object]'
       log(`params after: ${JSON.stringify(params_)}`)
-    })()
-
-    // prepare base query
-    let base: IQuery
-    if (typeof this.base === 'function') {
-      const params_ = _.cloneDeep(params)
-      base = newQueryWithoutWildcard(this.base(params_))
-    } else {
-      base = newQueryWithoutWildcard(this.base)
     }
 
-    // fields
-    if (params.fields && params.fields.length) {
+    const base: IQuery = dummyQuery(typeof this.base === 'function' ? await this.base(params) : this.base)
+
+    if (params.distinct) {
+      base.$distinct = true
+    }
+
+    if (params.fields.length) {
       const $select = (base.$select = [] as IResultColumn[])
-      $select.push(
-        ...params.fields.reduce((r, f) => {
-          let fields: IResultColumn | IResultColumn[] | undefined
+      for (const f of params.fields) {
+        let fields: IResultColumn[] = []
 
-          // string
-          if (typeof f === 'string') {
-            const key = `field:${f}`
-            if (this.subqueries[key]) {
-              const registered = this.subqueries[key]
-              const { $distinct, $select } = registered.apply(params)
-              if ($distinct) base.$distinct = true
-              fields = newQueryWithoutWildcard({ $select }).$select
-              if (!fields.length) throw new Error(`No result columns returned from '${key}'`)
-            } else if (!skipDefFields) {
-              fields = { expression: new ColumnExpression(f) }
-            }
+        // string
+        if (typeof f === 'string') {
+          const key = `field:${f}`
+          if (this.subqueries[key]) {
+            log(`Apply ${key}`)
+            const registered = this.subqueries[key]
+            const { $distinct, $select } = await registered.apply(params)
+            if ($distinct) base.$distinct = true
+            fields = dummyQuery({ $select }).$select
+            if (!fields.length) warn(`No result columns for '${key}'`)
           }
-          // [string, string]
-          else if (Array.isArray(f)) {
-            fields = { expression: new ColumnExpression(...f) }
+          else if (!skipDefFields) {
+            fields = [{ expression: new ColumnExpression(f) }]
           }
-          // IResultColumnShortcut
-          else if ('column' in f) {
-            fields = {
-              expression: new ColumnExpression(...f.column),
-              $as: f.$as
-            }
-          }
-          // IResultColumn
-          else {
-            fields = f
-          }
+        }
+        // [string, string]
+        else if (Array.isArray(f)) {
+          fields = [{ expression: new ColumnExpression(f[0], f[1]) }]
+        }
+        // { column, $as? }
+        else if ('column' in f) {
+          fields = [{
+            expression: new ColumnExpression(f.column[0], f.column[1]),
+            $as: f.$as
+          }]
+        }
+        // IResultColumn
+        else {
+          fields = [f]
+        }
 
-          if (fields) {
-            if (!Array.isArray(fields)) fields = [fields]
-            r.push(...fields.map(f => new ResultColumn(f)))
-          }
-          return r
-        }, [] as ResultColumn[])
-      )
+        $select.push(...fields.map(f => new ResultColumn(f)))
+      }
     }
 
-    // tables
-    if (params.tables && params.tables.length) {
+    if (params.tables.length) {
       for (const t of params.tables) {
         const key = `table:${t}`
         if (this.subqueries[key]) {
-          const { $from, $where } = this.subqueries[key].apply(params)
-          merge(base, newQueryWithoutWildcard({ $from, $where }))
           log(`Apply ${key}`)
+          const { $from, $where } = await this.subqueries[key].apply(params)
+          mergeQuery(base, dummyQuery({ $from, $where }))
         }
       }
     }
 
-    // subqueries
-    if (params.subqueries) {
-      for (const s of Object.keys(params.subqueries)) {
-        if (this.subqueries[s]) {
-          const subquery = newQueryWithoutWildcard(this.subqueries[s].apply(s, params))
-          merge(base, subquery)
-        }
+    for (const s of Object.keys(params.subqueries)) {
+      if (this.subqueries[s]) {
+        const subquery = dummyQuery(await this.subqueries[s].apply(s, params))
+        mergeQuery(base, subquery)
       }
     }
-
-    // conditions
     if (params.conditions) {
       if (!base.$where) {
         base.$where = params.conditions
-      } else if ((base.$where as IConditionalExpression).classname !== 'AndExpressions') {
+      }
+      else if ((base.$where as IConditionalExpression).classname !== 'AndExpressions') {
         base.$where = new AndExpressions([base.$where as IConditionalExpression, params.conditions])
-      } else {
-        ;(base.$where as IGroupedExpressions).expressions.push(params.conditions)
+      }
+      else {
+        (base.$where as IGroupedExpressions).expressions.push(params.conditions)
       }
     }
 
-    // groupBy
-    if (params.groupBy && params.groupBy.length) {
+    if (params.groupBy.length) {
       const $group = (base.$group = (base.$group || { expressions: [] }) as IGroupBy)
       const expressions = $group.expressions as IExpression[]
-      const $having: IConditionalExpression[] = $group.$having
-        ? [$group.$having as IConditionalExpression]
-        : []
+      const $having = $group.$having ? [$group.$having as IConditionalExpression] : []
 
       function apply({ expressions: e, $having: h }: IGroupBy) {
-        const e_ = Array.isArray(e) ? e : [e]
-        expressions.push(...e_)
-
-        if (h) {
-          const h_ = Array.isArray(h) ? h : [h]
-          $having.push(...h_)
-        }
+        expressions.push(...Array.isArray(e) ? e : [e])
+        if (h) $having.push(...Array.isArray(h) ? h : [h])
       }
 
       for (const g of params.groupBy) {
@@ -687,12 +500,13 @@ export class QueryDef {
         if (typeof g === 'string') {
           const key = `groupBy:${g}`
           if (this.subqueries[key]) {
-            const $group = this.subqueries[key].apply(params).$group
-            const group = newQueryWithoutWildcard({ $group }).$group
-            if (!group) throw new Error(`No GROUP BY returned from '${key}'`)
-            apply(group)
             log(`Apply ${key}`)
-          } else {
+            const { $group } = await this.subqueries[key].apply(params)
+            const group = dummyQuery({ $group }).$group
+            if (group) apply(group)
+            else warn(`No group by expressions returned from '${key}'`)
+          }
+          else {
             expressions.push(new ColumnExpression(g))
           }
         }
@@ -702,165 +516,58 @@ export class QueryDef {
         }
       }
 
-      $group.$having = !$having.length
-        ? undefined
-        : $having.length === 1
-          ? $having[0]
-          : new AndExpressions($having)
-
       base.$group = { expressions, $having }
     }
 
-    // sorting
-    if (params.sorting) {
-      if (!Array.isArray(params.sorting)) params.sorting = [params.sorting]
-      if (!base.$order) base.$order = []
-      let $order = base.$order
-      if (typeof $order === 'string') base.$order = $order = [new OrderBy($order)]
-      if (!Array.isArray($order)) base.$order = $order = [$order]
-      for (const o of params.sorting) {
-        // string
-        if (typeof o === 'string') {
-          const key = `orderBy:${o}`
-          if (this.subqueries[key]) {
-            const value = this.subqueries[key].apply(params).$order
-            const order = newQueryWithoutWildcard({ $order: value }).$order
-            if (!order) throw new Error(`No ORDER BY returned from '${key}'`)
-            $order.push(...order)
-            log(`Apply ${key}`)
-          } else {
-            $order.push(new OrderBy(o))
-          }
+    if (!base.$order) base.$order = []
+    let $order = base.$order
+    if (typeof $order === 'string') base.$order = $order = [new OrderBy($order)]
+    if (!Array.isArray($order)) base.$order = $order = [$order]
+
+    for (const o of params.sorting) {
+      // string
+      if (typeof o === 'string') {
+        const key = `orderBy:${o}`
+        if (this.subqueries[key]) {
+          log(`Apply ${key}`)
+          const { $order: value } = await this.subqueries[key].apply(params)
+          const order = dummyQuery({ $order: value }).$order
+          if (order) $order.push(...order)
+          else throw new Error(`No order by expressions returned from '${key}'`)
         }
-        // IOrderBy
         else {
-          $order.push(o)
+          $order.push(new OrderBy(o))
         }
+      }
+      // IOrderBy
+      else {
+        $order.push(o)
       }
     }
 
-    // limit
     if (params.limit) {
-      if (typeof params.limit === 'number') {
-        params.limit = { $limit: params.limit }
-      }
+      if (typeof params.limit === 'number') params.limit = { $limit: params.limit }
       base.$limit = params.limit
     }
 
-    if (params.distinct) {
-      base.$distinct = true
-    }
-
-    const result = new Query(base)
-    fixRegexp(result)
-    return result
+    return new Query(QueryDef.postProcessors.reduce((r, p) => p(r), base))
   }
 
-  // backward compatible
-  public registerQuery(name: string, arg: Query | QueryArg, ...companion: string[]): SubqueryDef {
-    return this.subquery(name, arg, ...companion)
-  }
-
-  // backward compatible
-  public registerResultColumn(
-    name: string,
-    arg: IResultColumn | ResultColumnArg,
-    ...companion: string[]
-  ): QueryDef {
-    return this.field(
-      name,
-      params => {
-        const resultColumn = typeof arg === 'function' ? arg(params) : arg
-        return { $select: resultColumn }
-      },
-      ...companion
-    )
-  }
-
-  // backward compatible
-  public registerGroupBy(name: string, arg: IGroupBy | GroupByArg, ...companion: string[]) {
-    return this.groupBy(
-      name,
-      params => {
-        const groupBy = typeof arg === 'function' ? arg(params) : arg
-        return { $group: groupBy }
-      },
-      ...companion
-    )
-  }
-
-  // backward compatible
-  public register(name: string, arg: IResultColumn | IGroupBy, ...companion: string[])
-  public register(name: string, arg: Query | QueryArg, ...companion: string[]): SubqueryDef
-  public register(
-    name: string,
-    arg: Query | QueryArg | IResultColumn | IGroupBy,
-    ...companion: string[]
-  ): any {
-    if (arg instanceof Query || typeof arg === 'function') {
-      return this.registerQuery(name, arg, ...companion)
-    } else if ('expression' in arg) {
-      return this.registerResultColumn(name, arg, ...companion)
-    } else if ('classname' in arg && arg.classname === 'GroupBy') {
-      return this.registerGroupBy(name, arg as IGroupBy, ...companion)
-    } else {
-      return this.registerQuery(name, arg as Partial<IQuery>, ...companion)
-    }
-  }
-
-  // backward compatible
-  public registerBoth(overwrite: boolean, name: string, arg: ExpressionArg, ...companion: string[])
-  public registerBoth(name: string, arg: ExpressionArg, ...companion: string[])
-  public registerBoth(...args: any[]) {
-    let overwrite = false,
-      name: string,
-      arg: ExpressionArg,
-      companion: string[]
-
-    if (typeof args[0] === 'string') {
-      name = args[0]
-      arg = args[1]
-      companion = args.slice(2)
-    } else {
-      overwrite = args[0]
-      name = args[1]
-      arg = args[2]
-      companion = args.slice(3)
-    }
-
-    return this.groupField(overwrite, name, arg, 'group_', ...companion)
-  }
-
-  public useShortcuts(shortcuts: IShortcut[], options: any = {}): QueryDef {
-    const registered: { [key: string]: Expression } = new Proxy({}, {
-      get(target, name) {
-        if (!target[name]) throw new Error(`expression '${String(name)}' not registered`)
-        if (typeof companions !== 'function' && registeredCompanions[name as string]) companions.push(...registeredCompanions[name as string])
-        return target[name]
-      }
-    })
-    const registeredCompanions: { [key: string]: string[] } = {}
-    const context: IShortcutContext = { registered, registeredCompanions, options }
-    let companions: string[] | ((params: IQueryParams) => string[]) = []
-
-    for (const sc of shortcuts) {
-      const { type, name } = sc
-      companions = sc.companions || []
-      if (availableShortcuts[type]) {
-        availableShortcuts[type].apply(this, [sc, companions, context])
-      }
-      else {
-        warn(`Invalid ${String(type)}:${name}`)
-      }
-    }
-    return this
-  }
-
-  public clone(): QueryDef {
-    const newDef = new QueryDef(typeof this.base === 'function' ? this.base : new Query(this.base))
+  clone(): QueryDef {
+    const queryDef = new QueryDef(typeof this.base === 'function' ? this.base : new Query(this.base))
     for (const name of Object.keys(this.subqueries)) {
-      newDef.subqueries[name] = this.subqueries[name].clone()
+      queryDef.subqueries[name] = this.subqueries[name].clone()
     }
-    return newDef
+    return queryDef
   }
 }
+
+// backward compatible
+export function registerShortcut<T extends IBaseShortcut>(name: string, func: ShortcutFunc<T>) {
+  warn('registerShortcut(...) is deprecated. use QueryDef.registerShortcut(...) instead')
+  QueryDef.registerShortcut(name, func)
+}
+
+export { QueryArg, ResultColumnArg, ExpressionArg, GroupByArg, SubqueryArg,  } from './interface'
+export { IQueryParams } from './queryParams'
+export { IBaseShortcut, IQueryArgShortcut, IFieldShortcut, ITableShortcut, ISubqueryShortcut, ISubqueryArgShortcut, IGroupByShortcut, IOrderByShortcut } from './shortcuts'

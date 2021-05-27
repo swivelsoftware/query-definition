@@ -1,120 +1,89 @@
+import merge from 'deepmerge'
 import { IQuery, Query } from 'node-jql'
-import { ICompanions, IQueryParams, SubqueryArg } from './interface'
-import { findUnknowns, newQueryWithoutWildcard } from './utils'
+import { IVariable, IVariableOptions, Prerequisite, SubqueryArg } from './interface'
+import { IQueryParams } from './queryParams'
+import { dummyQuery, getUnknowns } from './utils'
 import * as swig from 'swig-templates'
-import debug = require('debug')
-
-const log = debug('QueryDef:log')
-
-interface IVariable {
-  // variable name
-  name: string
-
-  // default value
-  default?: any
-
-  // value formatting
-  format?: string
-}
 
 export class SubqueryDef {
-  protected readonly arg: SubqueryArg
-  protected readonly variables: IVariable[] = []
-  protected readonly companion: ICompanions
+  private readonly variables: IVariable[] = []
 
-  constructor(arg: SubqueryArg, companion: ICompanions = []) {
-    this.arg = arg
-    this.companion = companion
-  }
+  constructor(
+    private readonly arg: SubqueryArg,
+    private readonly prerequisite?: Prerequisite
+  ) {}
 
-  public get hasVariables(): boolean {
+  get hasVariables(): boolean {
     return this.variables.length > 0
   }
 
-  public get default(): any {
-    return !this.variables.length
-      ? true
-      : this.variables.reduce((r, v) => {
-        r[v.name] = v.default || null
-        return r
-      }, {} as any)
+  get default(): any {
+    if (!this.variables.length) return true
+    
+    return this.variables.reduce<any>((r, v) => {
+      r[v.name] = v.default || null
+      return r
+    }, {})
   }
 
-  public register(
-    name: string,
-    i: number,
-    { default: default_, format }: Partial<IVariable> = {}
-  ): SubqueryDef {
-    this.variables[i] = { name, default: default_, format }
+  register(name: string, i: number, options: IVariableOptions = {}): SubqueryDef {
+    this.variables[i] = { name, ...options }
     return this
   }
 
-  public getCompanions(params: IQueryParams): string[] {
-    return Array.isArray(this.companion) ? this.companion : this.companion(params)
-  }
-
-  public apply(params: IQueryParams): IQuery
-  public apply(name: string, params: IQueryParams): IQuery
-  public apply(...args: any[]): IQuery {
-    let name: string, params: IQueryParams
-
-    if (args.length === 1) {
-      name = '__null__'
-      params = args[0]
-    } else {
-      name = args[0]
-      params = args[1]
+  async apply(params: IQueryParams): Promise<IQuery>
+  async apply(name: string, params: IQueryParams): Promise<IQuery>
+  async apply(arg0: string|IQueryParams, arg1?: IQueryParams): Promise<IQuery> {
+    let name = '', params: IQueryParams
+    if (arg1) {
+      name = arg0 as string
+      params = arg1
+    }
+    else {
+      params = arg0 as IQueryParams
     }
 
     let result: Query
-    if (args.length > 1) {
+    if (name && name.length) {
       let value = params.subqueries && params.subqueries[name] || undefined
-      result = newQueryWithoutWildcard(
-        typeof this.arg === 'function' ? this.arg(value, params) : this.arg
-      )
-      const unknowns = findUnknowns(result)
-      if (value === true) {
-        value = this.default
-      } else {
-        value = Object.assign(this.default, value)
-      }
+      result = dummyQuery(typeof this.arg === 'function' ? await this.arg(value, params) : this.arg)
+      const unknowns = getUnknowns(result)
+      value = value === true ? this.default : Object.assign(this.default, value)
 
-      const applied: any[] = []
       for (let i = 0, length = unknowns.length; i < length; i += 1) {
         const unknown = unknowns[i]
         const variable = this.variables[i]
         if (variable) {
-          let v = value[variable.name]
-          if (variable.format) {
-            v = swig.render(variable.format, { locals: { value } })
-          }
-          unknown.value = v
+          unknown.value = swig.render(variable.format || `{{ value['${variable.name}'] }}`, { locals: { value } })
         }
-        applied.push([variable ? variable.name : '(not-registered)', unknown.value])
       }
-
-      if (!applied.length && typeof value === 'object') {
-        const keys = Object.keys(value)
-        for (const k of keys) applied.push([k, value[k]])
-      }
-
-      log(`Apply subquery '${name}' with (${applied.map(v => `${v[0]}=${JSON.stringify(v[1])}`).join(', ')})`)
-    } else {
-      result = newQueryWithoutWildcard(typeof this.arg === 'function' ? this.arg(params) : this.arg)
+    }
+    else {
+      result = dummyQuery(typeof this.arg === 'function' ? await this.arg(params) : this.arg)
     }
 
     return result
   }
 
-  public clone(): SubqueryDef {
-    const newDef = new SubqueryDef(
+  async applyPrerequisite(params: IQueryParams) {
+    if (this.prerequisite) {
+      let prerequisite = this.prerequisite
+      if (Array.isArray(prerequisite)) return prerequisite
+      else if (typeof prerequisite === 'function') return prerequisite(params)
+      else merge(params, prerequisite)
+    }
+    return {}
+  }
+
+  clone(): SubqueryDef {
+    const subqueryDef = new SubqueryDef(
       typeof this.arg === 'function' ? this.arg : new Query(this.arg),
-      Array.isArray(this.companion) ? [...this.companion] : this.companion
+      !Array.isArray(this.prerequisite) ? this.prerequisite : [...(this.prerequisite || [])]
     )
     for (let i = 0, length = this.variables.length; i < length; i += 1) {
-      const v = this.variables[i]
-      newDef.register(v.name, i, v)
+      const { name, ...v } = this.variables[i]
+      subqueryDef.register(name, i, v)
     }
-    return newDef
+    return subqueryDef
   }
 }
