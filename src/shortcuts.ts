@@ -13,6 +13,7 @@ export type CommonType<T> = T | CommonFunc<T>
 type UnknownType = boolean | { noOfUnknowns?: number; fromTo?: boolean } | Array<[string, number]>
 
 export interface IShortcutContext<T = any> {
+  prerequisite?: Prerequisite
   registered: { [key: string]: IExpression }
   regPrerequisites: { [key: string]: Prerequisite }
   options: T
@@ -72,7 +73,8 @@ export interface IOrderByShortcut extends IBaseShortcut {
 export type DefaultShortcuts = IQueryArgShortcut | IFieldShortcut | ITableShortcut | ISubqueryShortcut | ISubqueryArgShortcut | IGroupByShortcut | IOrderByShortcut
 
 export const FieldShortcutFunc: ShortcutFunc<IFieldShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IFieldShortcut | IQueryArgShortcut, context: IShortcutContext) {
-  let { name, prerequisite } = shortcut
+  const { name } = shortcut
+  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {
@@ -97,7 +99,8 @@ export const FieldShortcutFunc: ShortcutFunc<IFieldShortcut | IQueryArgShortcut>
 }
 
 export const TableShortcutFunc: ShortcutFunc<ITableShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: ITableShortcut | IQueryArgShortcut, context: IShortcutContext) {
-  let { name, prerequisite } = shortcut
+  const { name } = shortcut
+  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('fromTable' in shortcut) {
@@ -116,7 +119,8 @@ export const TableShortcutFunc: ShortcutFunc<ITableShortcut | IQueryArgShortcut>
 }
 
 export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArgShortcut> = async function(this: QueryDef, shortcut: ISubqueryShortcut | ISubqueryArgShortcut, context: IShortcutContext) {
-  let { name, prerequisite } = shortcut
+  const { name } = shortcut
+  const { prerequisite } = context
 
   let subqueryArg: SubqueryArg | undefined
   if ('expression' in shortcut) {
@@ -156,7 +160,8 @@ export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArg
 }
 
 export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IGroupByShortcut | IQueryArgShortcut, context: IShortcutContext) {
-  let { name, prerequisite } = shortcut
+  const { name } = shortcut
+  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {
@@ -175,7 +180,8 @@ export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShort
 }
 
 export const OrderByShortcutFunc: ShortcutFunc<IOrderByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IOrderByShortcut | IQueryArgShortcut, context: IShortcutContext) {
-  let { name, prerequisite } = shortcut
+  const { name } = shortcut
+  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {

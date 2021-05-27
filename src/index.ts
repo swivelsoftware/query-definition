@@ -267,7 +267,7 @@ export class QueryDef {
   }
 
   async useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): Promise<QueryDef> {
-    let prerequisite: Prerequisite | undefined, regPrerequisites: { [key: string]: Prerequisite } = {}
+    const regPrerequisites: { [key: string]: Prerequisite } = {}
     const registered: { [key: string]: IExpression } = new Proxy({}, {
       get(target, name) {
         if (!target[name]) throw new Error(`Expression '${String(name)}' not registered`)
@@ -275,9 +275,9 @@ export class QueryDef {
           return target[name]
         }
         finally {
-          let left = prerequisite
+          let left = context.prerequisite
           let right = regPrerequisites[name as string]
-          prerequisite = left && right ? mergePrerequisite(left, right) : right || left
+          context.prerequisite = left && right ? mergePrerequisite(left, right) : right || left
         }
       }
     })
@@ -285,7 +285,7 @@ export class QueryDef {
     
     for (const shortcut of shortcuts) {
       const { name, type } = shortcut
-      prerequisite = shortcut.prerequisite || shortcut.companions
+      context.prerequisite = shortcut.prerequisite || shortcut.companions
       if (QueryDef.shortcuts[type]) {
         try {
           await QueryDef.shortcuts[type].bind(this)(shortcut, context)
@@ -332,7 +332,7 @@ export class QueryDef {
         const prerequisite = await subqueries[key].applyPrerequisite(params)
         if (Array.isArray(prerequisite)) {
           for (const k of prerequisite) {
-            if (registered.indexOf(k) === -1) throw new Error(`Recursive dependency: ${registered.join(' -> ')} -> ${k}`)
+            if (registered.indexOf(k) > -1) throw new Error(`Recursive dependency: ${registered.join(' -> ')} -> ${k}`)
             await register(k, registered)
           }
         }
