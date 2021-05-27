@@ -79,7 +79,7 @@ export class QueryDef {
 
   private commonFunc<T>(funcName: string, prefix = funcName): (...args: any[]) => SubqueryDef {
     return (...args: any[]) => {
-      if (typeof args[0] === 'boolean') {
+      if (typeof args[0] === 'boolean' || (typeof args[0] !== 'string' && typeof args[1] === 'string')) {
         warn(`QueryDef.${funcName}(overwrite: boolean, ...) is deprecated. use the one without @param overwrite instead`)
         args = args.slice(1)
       }
@@ -159,7 +159,7 @@ export class QueryDef {
   groupField(name: string, arg: ExpressionArg, prefix: string, prerequisite?: Prerequisite): QueryDef
   groupField(name: string, arg: ExpressionArg, prefix: string, ...companion: string[]): QueryDef
   groupField(...args: any[]): QueryDef {
-    if (typeof args[0] === 'boolean') {
+    if (typeof args[0] === 'boolean'|| (typeof args[0] !== 'string' && typeof args[1] === 'string')) {
       warn('QueryDef.groupField(overwrite: boolean, ...) is deprecated. use the one without @param overwrite instead')
       args = args.slice(1)
     }
@@ -262,11 +262,11 @@ export class QueryDef {
   registerBoth(name: string, arg: ExpressionArg, ...companion: string[])
   registerBoth(...args: any[]) {
     warn('QueryDef.registerBoth(...) is deprecated. use QueryDef.groupField(...) instead')
-    if (typeof args[0] === 'boolean') args = args.slice(1)
+    if (typeof args[0] === 'boolean' || (typeof args[0] !== 'string' && typeof args[1] === 'string')) args = args.slice(1)
     return this.groupField(args[0] as string, args[1] as ExpressionArg, 'group_', args.slice(2))
   }
 
-  useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): QueryDef {
+  async useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): Promise<QueryDef> {
     let prerequisite: Prerequisite | undefined, regPrerequisites: { [key: string]: Prerequisite } = {}
     const registered: { [key: string]: IExpression } = new Proxy({}, {
       get(target, name) {
@@ -284,10 +284,17 @@ export class QueryDef {
     const context: IShortcutContext = { registered, regPrerequisites, options }
     
     for (const shortcut of shortcuts) {
-      const { type } = shortcut
+      const { name, type } = shortcut
       prerequisite = shortcut.prerequisite || shortcut.companions
       if (QueryDef.shortcuts[type]) {
-        QueryDef.shortcuts[type].bind(this)(shortcut, context)
+        try {
+          await QueryDef.shortcuts[type].bind(this)(shortcut, context)
+        }
+        catch (e) {
+          const e2 = new Error(`${e.message}. Fail to register ${type}:${name}`)
+          e2.stack += '\n' + e.stack
+          throw e2
+        }
       }
       else {
         warn(`Invalid shortcut type ${type}`)
@@ -570,4 +577,4 @@ export function registerShortcut<T extends IBaseShortcut>(name: string, func: Sh
 
 export { QueryArg, ResultColumnArg, ExpressionArg, GroupByArg, SubqueryArg,  } from './interface'
 export { IQueryParams } from './queryParams'
-export { IBaseShortcut, IQueryArgShortcut, IFieldShortcut, ITableShortcut, ISubqueryShortcut, ISubqueryArgShortcut, IGroupByShortcut, IOrderByShortcut } from './shortcuts'
+export { CommonFunc, CommonType, IShortcutContext, IBaseShortcut, IQueryArgShortcut, IFieldShortcut, ITableShortcut, ISubqueryShortcut, ISubqueryArgShortcut, IGroupByShortcut, IOrderByShortcut } from './shortcuts'

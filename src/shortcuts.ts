@@ -3,12 +3,12 @@ import { GroupBy, IExpression, IFromTable, OrderBy, ResultColumn } from 'node-jq
 import { QueryDef } from '.'
 import { Prerequisite, QueryArg, SubqueryArg } from './interface'
 import { IQueryParams } from './queryParams'
-import { SubqueryDef } from './subquery'
 
+const log = debug('QueryDef:log')
 const warn = debug('QueryDef:warn')
 
-type CommonFunc<T> = (registered: { [key: string]: IExpression }) => T | Promise<T>
-type CommonType<T> = T | CommonFunc<T>
+export type CommonFunc<T> = (registered: { [key: string]: IExpression }) => T | Promise<T>
+export type CommonType<T> = T | CommonFunc<T>
 
 type UnknownType = boolean | { noOfUnknowns?: number; fromTo?: boolean } | Array<[string, number]>
 
@@ -78,6 +78,7 @@ export const FieldShortcutFunc: ShortcutFunc<IFieldShortcut | IQueryArgShortcut>
   if ('expression' in shortcut) {
     const expression = typeof shortcut.expression === 'function' ? await shortcut.expression(context.registered) : shortcut.expression
     if ('registered' in shortcut && shortcut.registered) {
+      log(`field:${name} registered`)
       context.registered[name] = expression
       if (prerequisite) context.regPrerequisites[name] = prerequisite
     }
