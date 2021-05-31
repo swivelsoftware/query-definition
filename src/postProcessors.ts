@@ -1,5 +1,5 @@
 import { IBetweenExpression, IBinaryExpression, ICaseExpression, IExistsExpression, IExpression, IFromTable, IFunctionExpression, IGroupedExpressions, IInExpression, IIsNullExpression, ILikeExpression, IMathExpression, IParameterExpression, IQuery, IRegexpExpression, IUnknown, IValue, Query } from 'node-jql'
-import { isRegExp } from 'util/types'
+import { types } from 'util'
 
 export type PostProcessor = (query: IQuery) => IQuery
 
@@ -87,7 +87,7 @@ export const FixRegexpProcessor: PostProcessor = function fixRegexp(query: IQuer
         if (typeof json_.right === 'string') {
           json_.right = escapeRegex(json_.right)
         }
-        else if (json_.right && !isRegExp(json_.right)) {
+        else if (json_.right && !types.isRegExp(json_.right)) {
           fix(json_.right, true)
         }
         break
