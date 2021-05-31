@@ -54,7 +54,7 @@ export class SubqueryDef {
         const unknown = unknowns[i]
         const variable = this.variables[i]
         if (variable) {
-          unknown.value = swig.render(variable.format || `{{ value['${variable.name}'] }}`, { locals: { value } })
+          unknown.value = variable.format ? swig.render(variable.format, { locals: { value } }) : value[variable.name]
         }
       }
     }
