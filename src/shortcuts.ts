@@ -72,66 +72,63 @@ export interface IOrderByShortcut extends IBaseShortcut {
 
 export type DefaultShortcuts = IQueryArgShortcut | IFieldShortcut | ITableShortcut | ISubqueryShortcut | ISubqueryArgShortcut | IGroupByShortcut | IOrderByShortcut
 
-export const FieldShortcutFunc: ShortcutFunc<IFieldShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IFieldShortcut | IQueryArgShortcut, context: IShortcutContext) {
+export const FieldShortcutFunc: ShortcutFunc<IFieldShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IFieldShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
-  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {
-    const expression = typeof shortcut.expression === 'function' ? await shortcut.expression(context.registered) : shortcut.expression
+    const expression = typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression
     if ('registered' in shortcut && shortcut.registered) {
       log(`field:${name} registered`)
-      context.registered[name] = expression
-      if (prerequisite) context.regPrerequisites[name] = prerequisite
+      ctx.registered[name] = expression
+      if (ctx.prerequisite) ctx.regPrerequisites[name] = ctx.prerequisite
     }
     queryArg = { $select: new ResultColumn(expression, name) }
   }
   else if ('queryArg' in shortcut) {
-    queryArg = await shortcut.queryArg(context.registered)
+    queryArg = await shortcut.queryArg(ctx.registered)
   }
 
   if (queryArg) {
-    this.field(name, queryArg, prerequisite)
+    this.field(name, queryArg, ctx.prerequisite)
   }
   else {
     warn(`Invalid field:${name}`)
   }
 }
 
-export const TableShortcutFunc: ShortcutFunc<ITableShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: ITableShortcut | IQueryArgShortcut, context: IShortcutContext) {
+export const TableShortcutFunc: ShortcutFunc<ITableShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: ITableShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
-  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('fromTable' in shortcut) {
-    queryArg = { $from: typeof shortcut.fromTable === 'function' ? await shortcut.fromTable(context.registered) : shortcut.fromTable }
+    queryArg = { $from: typeof shortcut.fromTable === 'function' ? await shortcut.fromTable(ctx.registered) : shortcut.fromTable }
   }
   else if ('queryArg' in shortcut) {
-    queryArg = await shortcut.queryArg(context.registered)
+    queryArg = await shortcut.queryArg(ctx.registered)
   }
 
   if (queryArg) {
-    this.table(name, queryArg, prerequisite)
+    this.table(name, queryArg, ctx.prerequisite)
   }
   else {
     warn(`Invalid table:${name}`)
   }
 }
 
-export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArgShortcut> = async function(this: QueryDef, shortcut: ISubqueryShortcut | ISubqueryArgShortcut, context: IShortcutContext) {
+export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArgShortcut> = async function(this: QueryDef, shortcut: ISubqueryShortcut | ISubqueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
-  const { prerequisite } = context
 
   let subqueryArg: SubqueryArg | undefined
   if ('expression' in shortcut) {
-    subqueryArg = { $where: typeof shortcut.expression === 'function' ? await shortcut.expression(context.registered) : shortcut.expression }
+    subqueryArg = { $where: typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression }
   }
   else if ('subqueryArg' in shortcut) {
-    subqueryArg = await shortcut.subqueryArg(context.registered)
+    subqueryArg = await shortcut.subqueryArg(ctx.registered)
   }
 
   if (subqueryArg) {
-    const subqueryDef = this.subquery(name, subqueryArg, prerequisite)
+    const subqueryDef = this.subquery(name, subqueryArg, ctx.prerequisite)
 
     if ('unknowns' in shortcut) {
       if (Array.isArray(shortcut.unknowns)) {
@@ -159,40 +156,38 @@ export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArg
   }
 }
 
-export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IGroupByShortcut | IQueryArgShortcut, context: IShortcutContext) {
+export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IGroupByShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
-  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {
-    queryArg = { $group: new GroupBy([typeof shortcut.expression === 'function' ? await shortcut.expression(context.registered) : shortcut.expression]) }
+    queryArg = { $group: new GroupBy([typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression]) }
   }
   else if ('queryArg' in shortcut) {
-    queryArg = await shortcut.queryArg(context.registered)
+    queryArg = await shortcut.queryArg(ctx.registered)
   }
 
   if (queryArg) {
-    this.groupBy(name, queryArg, prerequisite)
+    this.groupBy(name, queryArg, ctx.prerequisite)
   }
   else {
     warn(`Invalid groupBy:${name}`)
   }
 }
 
-export const OrderByShortcutFunc: ShortcutFunc<IOrderByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IOrderByShortcut | IQueryArgShortcut, context: IShortcutContext) {
+export const OrderByShortcutFunc: ShortcutFunc<IOrderByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IOrderByShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
-  const { prerequisite } = context
 
   let queryArg: QueryArg | undefined
   if ('expression' in shortcut) {
     const direction: 'ASC'|'DESC' = shortcut['direction'] || 'ASC'
-    queryArg = { $order: new OrderBy(typeof shortcut.expression === 'function' ? await shortcut.expression(context.registered) : shortcut.expression, direction) }
+    queryArg = { $order: new OrderBy(typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression, direction) }
   }
   else if ('queryArg' in shortcut) {
-    queryArg = await shortcut.queryArg(context.registered)
+    queryArg = await shortcut.queryArg(ctx.registered)
   }
   if (queryArg) {
-    this.orderBy(name, queryArg, prerequisite)
+    this.orderBy(name, queryArg, ctx.prerequisite)
   }
   else {
     warn(`Invalid orderBy:${name}`)
