@@ -1,7 +1,30 @@
 import merge from 'deepmerge'
-import { AndExpressions, BetweenExpression, BinaryExpression, CaseExpression, ColumnExpression, ExistsExpression, Expression, FromTable, FunctionExpression, IConditionalExpression, IExpression, IFromTable, IGroupBy, InExpression, IOrderBy, IQuery, IResultColumn, IsNullExpression, LikeExpression, MathExpression, OrExpressions, ParameterExpression, Query, QueryExpression, RegexpExpression, Unknown } from 'node-jql'
-import { Prerequisite } from './interface'
+import { AndExpressions, BetweenExpression, BinaryExpression, CaseExpression, ColumnExpression, ExistsExpression, Expression, FromTable, FunctionExpression, IConditionalExpression, IExpression, IFromTable, IGroupBy, InExpression, IOrderBy, IQuery, IResultColumn, IsNullExpression, LikeExpression, MathExpression, OrExpressions, ParameterExpression, Query, QueryExpression, RegexpExpression, Unknown, Value } from 'node-jql'
+import { Prerequisite, SubqueryArg } from './interface'
 import { IQueryParams, OrderByParams } from './queryParams'
+
+export function EqualOrInSubqueryArg(leftExpression: IExpression): SubqueryArg {
+  return ({ value }) => {
+    let expression: IExpression
+    if (Array.isArray(value)) {
+      expression = new InExpression(leftExpression, false, new Value(value))
+    }
+    else {
+      expression = new BinaryExpression(leftExpression, '=', new Value(value))
+    }
+    return {
+      $where: [expression]
+    }
+  }
+}
+
+export function IfExpression(condition: IExpression, whenTrue: IExpression, whenFalse: IExpression = new Value(null)): FunctionExpression {
+  return new FunctionExpression('IF', condition, whenTrue, whenFalse)
+}
+
+export function IfNullExpression(value: IExpression, elseValue: IExpression): FunctionExpression {
+  return new FunctionExpression('IFNULL', value, elseValue)
+}
 
 export function getUnknowns(arg: Query | FromTable | Expression): Unknown[] {
   const result: Unknown[] = []
