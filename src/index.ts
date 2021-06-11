@@ -6,7 +6,7 @@ import { IQueryParams, FieldParams, GroupByParams, OrderByParams } from './query
 import { SubqueryDef } from './subquery'
 import { dummyQuery, mergePrerequisite, mergeQuery } from './utils'
 import { FixRegexpProcessor, PostProcessor } from './postProcessors'
-import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts } from './shortcuts'
+import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts, CombinationShortcutFunc as CombinationShortcutFunc } from './shortcuts'
 
 const log = debug('QueryDef:log')
 const warn = debug('QueryDef:warn')
@@ -20,6 +20,7 @@ export class QueryDef {
     field: FieldShortcutFunc,
     table: TableShortcutFunc,
     subquery: SubqueryShortcutFunc,
+    combination: CombinationShortcutFunc,
     groupBy: GroupByShortcutFunc,
     orderBy: OrderByShortcutFunc
   }

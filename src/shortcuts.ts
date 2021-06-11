@@ -1,5 +1,5 @@
 import debug = require('debug')
-import { GroupBy, IExpression, IFromTable, OrderBy, ResultColumn } from 'node-jql'
+import { BinaryExpression, GroupBy, IExpression, IFromTable, InExpression, LikeExpression, OrderBy, ResultColumn, Value } from 'node-jql'
 import { QueryDef } from '.'
 import { Prerequisite, QueryArg, SubqueryArg } from './interface'
 import { IQueryParams } from './queryParams'
@@ -37,7 +37,7 @@ export interface IQueryArgShortcut extends IBaseShortcut {
 }
 
 export interface IFieldShortcut extends IBaseShortcut {
-  type: 'field'
+  type: 'field'|'combintaion'
   expression: CommonType<IExpression>
   registered?: boolean
 }
@@ -154,6 +154,22 @@ export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArg
   else {
     warn(`Invalid subquery:${name}`)
   }
+}
+
+export const CombinationShortcutFunc: ShortcutFunc<IFieldShortcut> = async function(this: QueryDef, shortcut: IFieldShortcut, ctx: IShortcutContext) {
+  const { name } = shortcut
+  const expression = typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression
+  this.subquery(name, ({ value }) => {
+    if (Array.isArray(value)) {
+      return { $where: new InExpression(expression, false, new Value(value)) }
+    }
+    else if (typeof value === 'string' && value.indexOf('%') > -1) {
+      return { $where: new LikeExpression(expression, false, value) }
+    }
+    else {
+      return { $where: new BinaryExpression(expression, '=', new Value(value)) }
+    }
+  }, ctx.prerequisite)
 }
 
 export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IGroupByShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
