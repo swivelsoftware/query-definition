@@ -37,7 +37,7 @@ export interface IQueryArgShortcut extends IBaseShortcut {
 }
 
 export interface IFieldShortcut extends IBaseShortcut {
-  type: 'field'|'combintaion'
+  type: 'field'|'combination'
   expression: CommonType<IExpression>
   registered?: boolean
 }
