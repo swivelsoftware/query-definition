@@ -1,6 +1,6 @@
 {
   "name": "query-definition",
-  "version": "4.0.15",
+  "version": "4.0.16",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,6 +41,6 @@
     "swig-templates": "^2.0.3"
   },
   "peerDependencies": {
-    "node-jql": "^3.0.10"
+    "node-jql": "^3.0.16"
   }
 }

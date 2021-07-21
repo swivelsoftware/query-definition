@@ -334,10 +334,10 @@ ms@2.1.2:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
 
-node-jql@^3.0.10:
-  version "3.0.10"
-  resolved "https://registry.yarnpkg.com/node-jql/-/node-jql-3.0.10.tgz#161dc7c8a3b5bee6f404706e8a0e7c26880558a4"
-  integrity sha512-cX1aJ17CZ2NUlETFCWJ/+4ZetXfOBKgvG3AVSDAlnDkP15IlSi2V7qWnj2FtcPH/pD5fuaxyHtL8fe+ARffYIA==
+node-jql@^3.0.16:
+  version "3.0.16"
+  resolved "https://registry.yarnpkg.com/node-jql/-/node-jql-3.0.16.tgz#efbfa8e7e7b051e214ec6d38fd174717adc907dd"
+  integrity sha512-zOrFB03bcgqGbsvo9OSHXJ0HQfD1c1PG09Ytp7YUJ+/VYHVA6ipGj9gdDlzJiwY6NrPhEKS9//tyoDoBCTJgxQ==
   dependencies:
     squel "^5.13.0"
 
