@@ -154,7 +154,7 @@ export function mergeQuery(base: Partial<IQuery>, subquery: Partial<IQuery>) {
     if (!base.$from.length) base.$from = subquery.$from
     else if (subquery.$from.length) {
       for (const t of subquery.$from) {
-        const exists = base.$from.find(({ table, $as }) => (typeof table === 'object' ? $as : table) === t.table)
+        const exists = base.$from.find(({ table, $as = table }) => $as === t.table)
     
         // new table
         if (!exists) base.$from.push(t)

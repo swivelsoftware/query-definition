@@ -4,7 +4,7 @@ export type FieldParams = string | [string, string] | { column: [string, string]
 
 export type GroupByParams = string | IGroupBy
 
-export type OrderByParams = string | IOrderBy
+export type OrderByParams = string | IOrderBy | { key: string, direction?: 'ASC' | 'DESC' }
 
 export interface IQueryParams {
   distinct?: boolean

@@ -291,7 +291,7 @@ export class QueryDef {
         try {
           await QueryDef.shortcuts[type].bind(this)(shortcut, context)
         }
-        catch (e) {
+        catch (e: any) {
           const e2 = new Error(`${e.message}. Fail to register ${type}:${name}`)
           e2.stack += '\n' + e.stack
           throw e2
@@ -532,7 +532,12 @@ export class QueryDef {
     if (typeof $order === 'string') base.$order = $order = [new OrderBy($order)]
     if (!Array.isArray($order)) base.$order = $order = [$order]
 
-    for (const o of params.sorting) {
+    for (let o of params.sorting) {
+      let direction: 'ASC' | 'DESC' = 'ASC'
+      if (typeof o !== 'string' && 'key' in o) {
+        o = o.key
+        direction = o['direction'] || 'ASC'
+      }
       // string
       if (typeof o === 'string') {
         const key = `orderBy:${o}`
@@ -544,7 +549,7 @@ export class QueryDef {
           else throw new Error(`No order by expressions returned from '${key}'`)
         }
         else {
-          $order.push(new OrderBy(o))
+          $order.push(new OrderBy(o, direction))
         }
       }
       // IOrderBy
