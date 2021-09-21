@@ -535,8 +535,8 @@ export class QueryDef {
     for (let o of params.sorting) {
       let direction: 'ASC' | 'DESC' = 'ASC'
       if (typeof o !== 'string' && 'key' in o) {
+        direction = o.direction || 'ASC'
         o = o.key
-        direction = o['direction'] || 'ASC'
       }
       // string
       if (typeof o === 'string') {
@@ -545,7 +545,10 @@ export class QueryDef {
           log(`Apply ${key}`)
           const { $order: value } = await this.subqueries[key].apply(params)
           const order = dummyQuery({ $order: value }).$order
-          if (order) $order.push(...order)
+          if (order) {
+            if (order.length === 1) order[0].order = direction
+            $order.push(...order)
+          }
           else throw new Error(`No order by expressions returned from '${key}'`)
         }
         else {
