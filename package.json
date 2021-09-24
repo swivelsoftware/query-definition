@@ -1,5 +1,5 @@
 {
-  "name": "query-definition",
+  "name": "@swivel-admin/query-definition",
   "version": "4.0.20",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
@@ -41,6 +41,6 @@
     "swig-templates": "^2.0.3"
   },
   "peerDependencies": {
-    "node-jql": "^3.0.22"
+    "@swivel-admin/node-jql": "^3.0.22"
   }
 }

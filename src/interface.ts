@@ -1,4 +1,4 @@
-import { IExpression, IGroupBy, IQuery, IResultColumn } from 'node-jql'
+import { IExpression, IGroupBy, IQuery, IResultColumn } from '@swivel-admin/node-jql'
 import { IQueryParams } from './queryParams'
 
 type CommonFunc<T> = T | ((params: IQueryParams) => T | Promise<T>)

@@ -1,5 +1,5 @@
 import merge from 'deepmerge'
-import { AndExpressions, BetweenExpression, BinaryExpression, CaseExpression, ColumnExpression, ExistsExpression, Expression, FromTable, FunctionExpression, IConditionalExpression, IExpression, IFromTable, IGroupBy, InExpression, IOrderBy, IQuery, IResultColumn, IsNullExpression, LikeExpression, MathExpression, OrExpressions, ParameterExpression, Query, QueryExpression, RegexpExpression, Unknown, Value } from 'node-jql'
+import { AndExpressions, BetweenExpression, BinaryExpression, CaseExpression, ColumnExpression, ExistsExpression, Expression, FromTable, FunctionExpression, IConditionalExpression, IExpression, IFromTable, IGroupBy, InExpression, IOrderBy, IQuery, IResultColumn, IsNullExpression, LikeExpression, MathExpression, OrExpressions, ParameterExpression, Query, QueryExpression, RegexpExpression, Unknown, Value } from '@swivel-admin/node-jql'
 import { Prerequisite, SubqueryArg } from './interface'
 import { IQueryParams, OrderByParams } from './queryParams'
 

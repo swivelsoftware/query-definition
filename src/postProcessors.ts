@@ -1,4 +1,4 @@
-import { IBetweenExpression, IBinaryExpression, ICaseExpression, IExistsExpression, IExpression, IFromTable, IFunctionExpression, IGroupedExpressions, IInExpression, IIsNullExpression, ILikeExpression, IMathExpression, IParameterExpression, IQuery, IRegexpExpression, IUnknown, IValue, Query } from 'node-jql'
+import { IBetweenExpression, IBinaryExpression, ICaseExpression, IExistsExpression, IExpression, IFromTable, IFunctionExpression, IGroupedExpressions, IInExpression, IIsNullExpression, ILikeExpression, IMathExpression, IParameterExpression, IQuery, IRegexpExpression, IUnknown, IValue, Query } from '@swivel-admin/node-jql'
 import { types } from 'util'
 
 export type PostProcessor = (query: IQuery) => IQuery

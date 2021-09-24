@@ -1,5 +1,5 @@
 import merge from 'deepmerge'
-import { IQuery, Query } from 'node-jql'
+import { IQuery, Query } from '@swivel-admin/node-jql'
 import { IVariable, IVariableOptions, Prerequisite, SubqueryArg } from './interface'
 import { IQueryParams } from './queryParams'
 import { dummyQuery, getUnknowns } from './utils'

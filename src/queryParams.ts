@@ -1,4 +1,4 @@
-import { IConditionalExpression, IGroupBy, ILimitOffset, IOrderBy, IResultColumn } from 'node-jql'
+import { IConditionalExpression, IGroupBy, ILimitOffset, IOrderBy, IResultColumn } from '@swivel-admin/node-jql'
 
 export type FieldParams = string | [string, string] | { column: [string, string], $as?: string } | IResultColumn
 

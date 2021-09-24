@@ -1,5 +1,5 @@
 import debug = require('debug')
-import { BinaryExpression, GroupBy, IExpression, IFromTable, InExpression, LikeExpression, OrderBy, ResultColumn, Value } from 'node-jql'
+import { BinaryExpression, GroupBy, IExpression, IFromTable, InExpression, LikeExpression, OrderBy, ResultColumn, Value } from '@swivel-admin/node-jql'
 import { QueryDef } from '.'
 import { Prerequisite, QueryArg, SubqueryArg } from './interface'
 import { IQueryParams } from './queryParams'
