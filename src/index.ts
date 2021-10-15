@@ -285,7 +285,8 @@ export class QueryDef {
         }
       }
     })
-    const context: IShortcutContext = this.context || (this.context = { registered, regPrerequisites, options })
+    if (!this.context) this.context = { registered, regPrerequisites, options }
+    const context: IShortcutContext = this.context
     
     for (const shortcut of shortcuts) {
       const { name, type } = shortcut
