@@ -1,6 +1,6 @@
 {
   "name": "@swivel-admin/query-definition",
-  "version": "4.0.20",
+  "version": "4.0.21",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
