@@ -1,6 +1,6 @@
 import debug = require('debug')
 import _ from 'lodash'
-import { AndExpressions, ColumnExpression, GroupBy, IConditionalExpression, IExpression, IGroupBy, IGroupedExpressions, IQuery, IResultColumn, OrderBy, Query, ResultColumn } from 'node-jql'
+import { AndExpressions, ColumnExpression, GroupBy, IConditionalExpression, IExpression, IGroupBy, IGroupedExpressions, IQuery, IResultColumn, OrderBy, Query, ResultColumn } from '@swivel-admin/node-jql'
 import { ExpressionArg, GroupByArg, Prerequisite, QueryArg, ResultColumnArg, SubqueryArg, IOptions } from './interface'
 import { IQueryParams, FieldParams, GroupByParams, OrderByParams } from './queryParams'
 import { SubqueryDef } from './subquery'
@@ -285,7 +285,8 @@ export class QueryDef {
         }
       }
     })
-    const context: IShortcutContext = this.context || (this.context = { registered, regPrerequisites, options })
+    if (!this.context) this.context = { registered, regPrerequisites, options }
+    const context: IShortcutContext = this.context
     
     for (const shortcut of shortcuts) {
       const { name, type } = shortcut
