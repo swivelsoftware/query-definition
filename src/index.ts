@@ -36,6 +36,9 @@ export class QueryDef {
 
   private readonly subqueries: { [key: string]: SubqueryDef } = {}
 
+  // last context
+  private context: any
+
   constructor(private readonly base: QueryArg) {}
 
   baseQuery(type: string) {
@@ -282,7 +285,7 @@ export class QueryDef {
         }
       }
     })
-    const context: IShortcutContext = { registered, regPrerequisites, options }
+    const context: IShortcutContext = this.context || (this.context = { registered, regPrerequisites, options })
     
     for (const shortcut of shortcuts) {
       const { name, type } = shortcut
