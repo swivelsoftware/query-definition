@@ -12,15 +12,14 @@ export type CommonType<T> = T | CommonFunc<T>
 
 type UnknownType = boolean | { noOfUnknowns?: number; fromTo?: boolean } | Array<[string, number]>
 
-export interface IShortcutContext<T = any> {
+export interface IShortcutContext {
   prerequisite?: Prerequisite
   registered: { [key: string]: IExpression }
   regPrerequisites: { [key: string]: Prerequisite }
-  options: T
 }
 
-export type ShortcutFunc<T extends IBaseShortcut, U = any> =
-  (this: QueryDef, shortcut: T, context: IShortcutContext & U) => Promise<void>
+export type ShortcutFunc<T extends IBaseShortcut, U = any, R = any> =
+  (this: QueryDef, shortcut: T, context: IShortcutContext & U, options?: R) => Promise<void>
 
 export interface IBaseShortcut {
   type: string

@@ -271,29 +271,30 @@ export class QueryDef {
   }
 
   async useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): Promise<QueryDef> {
-    const regPrerequisites: { [key: string]: Prerequisite } = {}
-    const registered: { [key: string]: IExpression } = new Proxy({}, {
-      get(target, name) {
-        if (!target[name]) throw new Error(`Expression '${String(name)}' not registered`)
-        try {
-          return target[name]
+    const context: IShortcutContext = this.context = this.context || {}
+    if (!context.registered) {
+      context.registered = new Proxy({}, {
+        get(target, name) {
+          if (!target[name]) throw new Error(`Expression '${String(name)}' not registered`)
+          try {
+            return target[name]
+          }
+          finally {
+            let left = context.prerequisite
+            let right = context.regPrerequisites[name as string]
+            context.prerequisite = left && right ? mergePrerequisite(left, right) : right || left
+          }
         }
-        finally {
-          let left = context.prerequisite
-          let right = regPrerequisites[name as string]
-          context.prerequisite = left && right ? mergePrerequisite(left, right) : right || left
-        }
-      }
-    })
-    if (!this.context) this.context = { registered, regPrerequisites, options }
-    const context: IShortcutContext = this.context
+      })
+    }
+    if (!context.regPrerequisites) context.regPrerequisites = {}
     
     for (const shortcut of shortcuts) {
       const { name, type } = shortcut
       context.prerequisite = shortcut.prerequisite || shortcut.companions
       if (QueryDef.shortcuts[type]) {
         try {
-          await QueryDef.shortcuts[type].bind(this)(shortcut, context)
+          await QueryDef.shortcuts[type].bind(this)(shortcut, context, options)
         }
         catch (e: any) {
           const e2 = new Error(`${e.message}. Fail to register ${type}:${name}`)
