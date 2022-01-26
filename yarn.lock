@@ -35,10 +35,10 @@
   dependencies:
     "@cspotcode/source-map-consumer" "0.8.0"
 
-"@swivel-admin/node-jql@^3.0.23":
-  version "3.0.23"
-  resolved "https://registry.yarnpkg.com/@swivel-admin/node-jql/-/node-jql-3.0.23.tgz#6a8d50aa561b6d5aeb1f99a02beea972c13c2288"
-  integrity sha512-7YBBLkT5AHZYvaDUofFsL2xXnMz5j+C3MoV0Hf0HUbP0vHjd2qax4IcrjZoBaLgNtMI2lVrAkowmKxYXWwb5Sg==
+"@swivel-admin/node-jql@^3.0.24":
+  version "3.0.24"
+  resolved "https://registry.yarnpkg.com/@swivel-admin/node-jql/-/node-jql-3.0.24.tgz#0f19ef2f70f0b164fd5b29b1e6bf9de57de76a3c"
+  integrity sha512-qXT2ZLQLYvtqlK5s9SPYbQbNObT9yItvvkU7Kw7T/NAEjM8rw2kG4JKYaW6/hhWOR+iaQsFFYEsDVuMfi+nmwQ==
   dependencies:
     squel "^5.13.0"
 
@@ -81,10 +81,10 @@
   resolved "https://registry.yarnpkg.com/@types/ms/-/ms-0.7.31.tgz#31b7ca6407128a3d2bbc27fe2d21b345397f6197"
   integrity sha512-iiUgKzV9AuaEkZqkOLDIvlQiL6ltuZd9tGcW3gwpnX8JbuiuhFlEGmmFXEXkN50Cvq7Os88IY2v0dkDqXYWVgA==
 
-"@types/node@^16.11.19":
-  version "16.11.19"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.11.19.tgz#1afa165146997b8286b6eabcb1c2d50729055169"
-  integrity sha512-BPAcfDPoHlRQNKktbsbnpACGdypPFBuX4xQlsWDE7B8XXcfII+SpOLay3/qZmCLb39kV5S1RTYwXdkx2lwLYng==
+"@types/node@^16.11.21":
+  version "16.11.21"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.11.21.tgz#474d7589a30afcf5291f59bd49cca9ad171ffde4"
+  integrity sha512-Pf8M1XD9i1ksZEcCP8vuSNwooJ/bZapNmIzpmsMaL+jMI+8mEYU3PKvs+xDNuQcJWF/x24WzY4qxLtB0zNow9A==
 
 acorn-walk@^8.1.1:
   version "8.2.0"
@@ -501,10 +501,10 @@ tsutils@^2.29.0:
   dependencies:
     tslib "^1.8.1"
 
-typescript@^4.5.4:
-  version "4.5.4"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.5.4.tgz#a17d3a0263bf5c8723b9c52f43c5084edf13c2e8"
-  integrity sha512-VgYs2A2QIRuGphtzFV7aQJduJ2gyfTljngLzjpfW9FoYZF6xuw1W0vW9ghCKLfcWrCFxK81CSGRAvS1pn4fIUg==
+typescript@^4.5.5:
+  version "4.5.5"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.5.5.tgz#d8c953832d28924a9e3d37c73d729c846c5896f3"
+  integrity sha512-TCTIul70LyWe6IJWT8QSYeA54WQe8EjQFU4wY52Fasj5UKx88LNYKCgBEHcOMOrFF1rKGbD8v/xcNWVUq9SymA==
 
 uglify-js@2.6.0:
   version "2.6.0"

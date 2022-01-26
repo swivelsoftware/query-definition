@@ -1,6 +1,6 @@
 {
   "name": "@swivel-admin/query-definition",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Library for building SQL queries",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,11 +28,11 @@
   "devDependencies": {
     "@types/debug": "^4.1.7",
     "@types/deepmerge": "^2.2.0",
-    "@types/node": "^16.11.19",
+    "@types/node": "^16.11.21",
     "rimraf": "^3.0.2",
     "ts-node": "^10.4.0",
     "tslint": "^6.1.3",
-    "typescript": "^4.5.4"
+    "typescript": "^4.5.5"
   },
   "dependencies": {
     "debug": "^4.3.3",
@@ -41,6 +41,6 @@
     "swig-templates": "^2.0.3"
   },
   "peerDependencies": {
-    "@swivel-admin/node-jql": "^3.0.23"
+    "@swivel-admin/node-jql": "^3.0.24"
   }
 }
