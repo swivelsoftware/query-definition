@@ -591,5 +591,5 @@ export function registerShortcut<T extends IBaseShortcut>(name: string, func: Sh
 
 export { QueryArg, ResultColumnArg, ExpressionArg, GroupByArg, SubqueryArg,  } from './interface'
 export { IQueryParams } from './queryParams'
-export { CommonFunc, CommonType, IShortcutContext, IBaseShortcut, IQueryArgShortcut, IFieldShortcut, ITableShortcut, ISubqueryShortcut, ISubqueryArgShortcut, IGroupByShortcut, IOrderByShortcut } from './shortcuts'
+export { dateSources, CommonFunc, CommonType, IShortcutContext, IBaseShortcut, IQueryArgShortcut, IFieldShortcut, ITableShortcut, ISubqueryShortcut, ISubqueryArgShortcut, IGroupByShortcut, IOrderByShortcut, IDateSourceShortcut, IComboArgShortcut, IComboShortcut, IConditionsShortcut, ISummaryMetricArgShortcut, ISummaryMetricShortcut, IConditionsContext } from './shortcuts'
 export { EqualOrInSubqueryArg, IfExpression, IfNullExpression } from './utils'
