@@ -6,7 +6,7 @@ import { IQueryParams, FieldParams, GroupByParams, OrderByParams } from './query
 import { SubqueryDef } from './subquery'
 import { dummyQuery, mergePrerequisite, mergeQuery } from './utils'
 import { FixRegexpProcessor, PostProcessor } from './postProcessors'
-import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts, CombinationShortcutFunc as CombinationShortcutFunc } from './shortcuts'
+import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts, CombinationShortcutFunc as CombinationShortcutFunc, DateSourceShortcutFunc, ComboShortcutFunc, ConditionsShortcutFunc, SummaryMetricShortcutFunc } from './shortcuts'
 
 const log = debug('QueryDef:log')
 const warn = debug('QueryDef:warn')
@@ -22,11 +22,15 @@ export class QueryDef {
     subquery: SubqueryShortcutFunc,
     combination: CombinationShortcutFunc,
     groupBy: GroupByShortcutFunc,
-    orderBy: OrderByShortcutFunc
+    orderBy: OrderByShortcutFunc,
+    dateSource: DateSourceShortcutFunc,
+    combo: ComboShortcutFunc,
+    conditions: ConditionsShortcutFunc,
+    summaryMetric: SummaryMetricShortcutFunc
   }
 
   static registerShortcut<T extends IBaseShortcut>(name: string, func: ShortcutFunc<T>) {
-    if (['table', 'field', 'subquery', 'groupBy', 'orderBy'].indexOf(name) === -1) {
+    if (['table', 'field', 'subquery', 'groupBy', 'orderBy', 'dateSource', 'combo', 'conditions', 'summaryMetric'].indexOf(name) === -1) {
       QueryDef.shortcuts[name] = func
     }
     else {
