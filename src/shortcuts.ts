@@ -206,22 +206,6 @@ export const SubqueryShortcutFunc: ShortcutFunc<ISubqueryShortcut | ISubqueryArg
   }
 }
 
-export const CombinationShortcutFunc: ShortcutFunc<IFieldShortcut> = async function(this: QueryDef, shortcut: IFieldShortcut, ctx: IShortcutContext) {
-  const { name } = shortcut
-  const expression = typeof shortcut.expression === 'function' ? await shortcut.expression(ctx.registered) : shortcut.expression
-  this.subquery(name, ({ value }) => {
-    if (Array.isArray(value)) {
-      return { $where: new InExpression(expression, false, new Value(value)) }
-    }
-    else if (typeof value === 'string' && value.indexOf('%') > -1) {
-      return { $where: new LikeExpression(expression, false, value) }
-    }
-    else {
-      return { $where: new BinaryExpression(expression, '=', new Value(value)) }
-    }
-  }, ctx.prerequisite)
-}
-
 export const GroupByShortcutFunc: ShortcutFunc<IGroupByShortcut | IQueryArgShortcut> = async function(this: QueryDef, shortcut: IGroupByShortcut | IQueryArgShortcut, ctx: IShortcutContext) {
   const { name } = shortcut
 

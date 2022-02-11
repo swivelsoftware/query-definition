@@ -6,7 +6,7 @@ import { IQueryParams, FieldParams, GroupByParams, OrderByParams } from './query
 import { SubqueryDef } from './subquery'
 import { dummyQuery, mergePrerequisite, mergeQuery } from './utils'
 import { FixRegexpProcessor, PostProcessor } from './postProcessors'
-import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts, CombinationShortcutFunc as CombinationShortcutFunc, DateSourceShortcutFunc, ComboShortcutFunc, ConditionsShortcutFunc, SummaryMetricShortcutFunc } from './shortcuts'
+import { FieldShortcutFunc, GroupByShortcutFunc, IBaseShortcut, OrderByShortcutFunc, ShortcutFunc, SubqueryShortcutFunc, TableShortcutFunc, IShortcutContext, DefaultShortcuts, DateSourceShortcutFunc, ComboShortcutFunc, ConditionsShortcutFunc, SummaryMetricShortcutFunc } from './shortcuts'
 
 const log = debug('QueryDef:log')
 const warn = debug('QueryDef:warn')
@@ -17,17 +17,22 @@ export class QueryDef {
   ]
 
   static readonly shortcuts: { [key: string]: ShortcutFunc<any> } = {
-    field: FieldShortcutFunc,
-    table: TableShortcutFunc,
-    subquery: SubqueryShortcutFunc,
-    combination: CombinationShortcutFunc,
-    groupBy: GroupByShortcutFunc,
-    orderBy: OrderByShortcutFunc,
-    dateSource: DateSourceShortcutFunc,
-    combo: ComboShortcutFunc,
-    conditions: ConditionsShortcutFunc,
-    summaryMetric: SummaryMetricShortcutFunc
+    field: FieldShortcutFunc,                 // queryDef.field
+    table: TableShortcutFunc,                 // queryDef.table
+    subquery: SubqueryShortcutFunc,           // queryDef.subquery
+    groupBy: GroupByShortcutFunc,             // queryDef.groupBy
+    orderBy: OrderByShortcutFunc,             // queryDef.orderBy
+    dateSource: DateSourceShortcutFunc,       // (queryDef.field) + (queryDef.subquery -> [date] BETWEEN ? AND ?)
+    combo: ComboShortcutFunc,                 // (queryDef.field) + (queryDef.groupBy -> [`group_${field}`]) + (queryDef.subquery -> [field] [operator] ?)
+    conditions: ConditionsShortcutFunc,       // FR = (Freehand, R/O), or Month = (Jan, Feb, Mar, ...) => generate (F_cbm, R_cbm) or (Jan_cbm, Feb_cbm, ...) fields
+    summaryMetric: SummaryMetricShortcutFunc  // e.g. cbm, chargeableWeight, etc. define COUNT(*), or SUM(cbm)
   }
+
+  /**
+   * how to use [conditions],
+   * fields: ['cbmMonth'] => fields: ['Jan_cbm', 'Feb_cbm', ...]
+   * SELECT (IF(jobMonth = 'Jan', cbm, 0)) as Jan_cbm, ...
+   */
 
   static registerShortcut<T extends IBaseShortcut>(name: string, func: ShortcutFunc<T>) {
     if (['table', 'field', 'subquery', 'groupBy', 'orderBy', 'dateSource', 'combo', 'conditions', 'summaryMetric'].indexOf(name) === -1) {
@@ -42,6 +47,7 @@ export class QueryDef {
 
   // last context
   private context: any
+  private options: any
 
   constructor(private readonly base: QueryArg) {}
 
@@ -276,6 +282,7 @@ export class QueryDef {
 
   async useShortcuts<T extends IBaseShortcut = IBaseShortcut, U = any>(shortcuts: Array<DefaultShortcuts | T>, options?: U): Promise<QueryDef> {
     const context: IShortcutContext = this.context = this.context || {}
+    options = this.options = options || this.options || {}
     if (!context.registered) {
       context.registered = new Proxy({}, {
         get(target, name) {
